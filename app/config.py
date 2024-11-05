@@ -1,6 +1,6 @@
 class Settings:
     # Configuración de la Base de Datos MariaDB
-    DB_HOST = "localhost"
+    DB_HOST = "localhost"     #192.168.3.15
     DB_USER = "aabr"
     DB_PASSWORD = "031297.Ale"
     DB_NAME = "repositorio"

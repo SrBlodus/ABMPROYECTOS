@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Usuario - Sistema de Gestión Académica{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Nuevo Usuario</h4>
+            </div>
+            <div class="card-body">
+                {% if request.query_params.get('error') %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ request.query_params.get('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/usuarios">
+                    <div class="mb-3">
+                        <label for="persona_id" class="form-label">Persona</label>
+                        <select name="persona_id" id="persona_id" class="form-select" required>
+                            <option value="">Seleccione una persona</option>
+                            {% for persona in personas %}
+                            <option value="{{ persona.id }}">{{ persona.nombres }} {{ persona.apellidos }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="usuario" class="form-label">Nombre de Usuario</label>
+                        <input type="text" class="form-control" id="usuario" name="usuario" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="rol_id" class="form-label">Rol</label>
+                        <select name="rol_id" id="rol_id" class="form-select" required>
+                            <option value="">Seleccione un rol</option>
+                            {% for rol in roles %}
+                            <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="estado_id" class="form-label">Estado</label>
+                        <select name="estado_id" id="estado_id" class="form-select" required>
+                            <option value="">Seleccione un estado</option>
+                            {% for estado in estados %}
+                            <option value="{{ estado.id }}">{{ estado.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Guardar
+                        </button>
+                        <a href="/usuarios" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

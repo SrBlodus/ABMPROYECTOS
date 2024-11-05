@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Usuario - Sistema de Gestión Académica{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">Detalle de Usuario</h4>
+                    <div>
+                        <a href="/usuarios/{{ usuario.id }}/editar" class="btn btn-warning btn-sm">
+                            <i class="bi bi-pencil me-2"></i>Editar
+                        </a>
+                        <a href="/usuarios" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-arrow-left me-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Usuario:</dt>
+                    <dd class="col-sm-9">{{ usuario.usuario }}</dd>
+
+                    <dt class="col-sm-3">Persona:</dt>
+                    <dd class="col-sm-9">{{ usuario.persona.nombres }} {{ usuario.persona.apellidos }}</dd>
+
+                    <dt class="col-sm-3">Rol:</dt>
+                    <dd class="col-sm-9">{{ usuario.rol.nombre }}</dd>
+
+                    <dt class="col-sm-3">Estado:</dt>
+                    <dd class="col-sm-9">{{ usuario.estado.nombre }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

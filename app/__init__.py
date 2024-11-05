@@ -38,7 +38,8 @@ from .routes import (
     proyectos_router,
     archivos_router,
     definiciones_router,
-    profesor_materias_router
+    profesor_materias_router,
+    usuarios_router
 )
 
 # Incluir routers
@@ -48,6 +49,7 @@ app.include_router(proyectos_router)
 app.include_router(archivos_router)
 app.include_router(definiciones_router)
 app.include_router(profesor_materias_router)
+app.include_router(usuarios_router)
 
 # Ruta principal que lleva al dashboard
 @app.get("/")

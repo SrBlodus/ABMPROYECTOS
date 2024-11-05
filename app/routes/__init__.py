@@ -4,6 +4,7 @@ from .proyectos import router as proyectos_router
 from .archivos import router as archivos_router
 from .definiciones import router as definiciones_router
 from .profesor_materias import router as profesor_materias_router
+from .usuarios import router as usuarios_router
 
 __all__ = [
     'personas_router',
@@ -11,5 +12,6 @@ __all__ = [
     'proyectos_router',
     'archivos_router',
     'definiciones_router',
-    'profesor_materias_router'
+    'profesor_materias_router',
+    'usuarios_router'
 ]
