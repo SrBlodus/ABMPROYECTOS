@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Gestión de Personas</h1>
+
+    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#personaModal">
+        Nueva Persona
+    </button>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombres</th>
+                    <th>Apellidos</th>
+                    <th>Rol</th>
+                    <th>Matrícula</th>
+                    <th>Carrera</th>
+                    <th>Estado</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for persona in personas %}
+                <tr>
+                    <td>{{ persona.id }}</td>
+                    <td>{{ persona.nombres }}</td>
+                    <td>{{ persona.apellidos }}</td>
+                    <td>{{ persona.rol.nombre }}</td>
+                    <td>
+                        {% if persona.rol_id == 2 %}
+                            {{ persona.profesor[0].matricula if persona.profesor else '' }}
+                        {% elif persona.rol_id == 3 %}
+                            {{ persona.alumno[0].matricula if persona.alumno else '' }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if persona.rol_id == 3 and persona.alumno %}
+                            {{ persona.alumno[0].carrera.nombre }}
+                        {% endif %}
+                    </td>
+                    <td>{{ persona.estado.nombre }}</td>
+                    <td>{{ persona.telefono }}</td>
+                    <td>{{ persona.correo }}</td>
+                    <td>
+                        <a href="/personas/{{ persona.id }}" class="btn btn-sm btn-warning">Editar</a>
+                        <button onclick="confirmarEliminar({{ persona.id }})" class="btn btn-sm btn-danger">Eliminar</button>
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            {% if persona.rol_id == 2 %}  <!-- Si es profesor -->
+                            <a href="/profesores/{{ persona.profesor[0].id }}/materias" class="btn btn-sm btn-info">
+                                Gestionar Materias
+                            </a>
+                            {% endif %}
+                            <!-- ... otros botones ... -->
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal para crear persona -->
+    <div class="modal fade" id="personaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva Persona</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/personas" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="nombres" class="form-label">Nombres</label>
+                            <input type="text" class="form-control" id="nombres" name="nombres" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="apellidos" class="form-label">Apellidos</label>
+                            <input type="text" class="form-control" id="apellidos" name="apellidos" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="rol_id" class="form-label">Rol</label>
+                            <select class="form-select" id="rol_id" name="rol_id" required onchange="toggleCarrera()">
+                                {% for rol in roles %}
+                                <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="matricula" class="form-label">Matrícula</label>
+                            <input type="text" class="form-control" id="matricula" name="matricula" required>
+                        </div>
+                        <div class="mb-3" id="carreraDiv" style="display: none;">
+                            <label for="carreras_id" class="form-label">Carrera</label>
+                            <select class="form-select" id="carreras_id" name="carreras_id">
+                                {% for carrera in carreras %}
+                                <option value="{{ carrera.id }}">{{ carrera.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="estado_id" class="form-label">Estado</label>
+                            <select class="form-select" id="estado_id" name="estado_id" required>
+                                {% for estado in estados %}
+                                <option value="{{ estado.id }}">{{ estado.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="telefono" name="telefono" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="correo" class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="correo" name="correo" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <form id="deleteForm" method="post" style="display: none;">
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmarEliminar(id) {
+    if (confirm('¿Está seguro de que desea eliminar esta persona?')) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/personas/${id}/eliminar`;
+        form.submit();
+    }
+}
+
+function toggleCarrera() {
+    const rolSelect = document.getElementById('rol_id');
+    const carreraDiv = document.getElementById('carreraDiv');
+    const carreraSelect = document.getElementById('carreras_id');
+
+    if (rolSelect.value === '3') {  // Si es alumno
+        carreraDiv.style.display = 'block';
+        carreraSelect.required = true;
+    } else {
+        carreraDiv.style.display = 'none';
+        carreraSelect.required = false;
+    }
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', toggleCarrera);
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Definiciones del Sistema{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Definiciones del Sistema</h1>
+
+    <div class="row">
+        <!-- Tipos de Archivos -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-file-earmark"></i>
+                        Tipos de Archivos
+                    </h5>
+                    <p class="card-text">Gestión de los tipos de archivos permitidos en el sistema.</p>
+                    <a href="/definiciones/tipos-archivos" class="btn btn-primary">
+                        Administrar Tipos
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aquí puedes agregar más tarjetas para futuras definiciones -->
+    </div>
+</div>
+{% endblock %}

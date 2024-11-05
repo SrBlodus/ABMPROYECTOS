@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Archivos - {{ proyecto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/proyectos">Proyectos</a></li>
+            <li class="breadcrumb-item"><a href="/proyectos/{{ proyecto.id }}">{{ proyecto.nombre }}</a></li>
+            <li class="breadcrumb-item active">Archivos</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Archivos del Proyecto</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#subirArchivoModal">
+            <i class="bi bi-upload"></i> Subir Archivo
+        </button>
+    </div>
+
+    {% if mensaje_error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ mensaje_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if mensaje_exito %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ mensaje_exito }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- Lista de archivos -->
+    <div class="card">
+        <div class="card-body">
+            {% if archivos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Archivo</th>
+                            <th>Tipo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for archivo in archivos %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-file-earmark me-2"></i>
+                                {{ archivo.ruta.split('/')[-1] }}
+                            </td>
+                            <td>{{ archivo.tipo_archivo.nombre }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="/{{ archivo.ruta }}" class="btn btn-sm btn-info" target="_blank">
+                                        <i class="bi bi-download"></i> Descargar
+                                    </a>
+                                    <form action="/proyectos/{{ proyecto.id }}/archivos/{{ archivo.id }}/eliminar" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                                onclick="return confirm('¿Está seguro de eliminar este archivo? Esta acción no se puede deshacer.')">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted">No hay archivos en este proyecto</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal para subir archivo -->
+    <div class="modal fade" id="subirArchivoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Subir Archivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/proyectos/{{ proyecto.id }}/archivos/subir" method="post" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="archivo" class="form-label">Seleccionar Archivo</label>
+                            <input type="file" class="form-control" id="archivo" name="archivo" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tipo_archivo_id" class="form-label">Tipo de Archivo</label>
+                            <select class="form-select" id="tipo_archivo_id" name="tipo_archivo_id" required>
+                                <option value="">Seleccione un tipo...</option>
+                                {% for tipo in tipos_archivos %}
+                                <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Subir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Autoclose de las alertas después de 5 segundos
+window.setTimeout(function() {
+    $('.alert').fadeTo(500, 0).slideUp(500, function(){
+        $(this).remove();
+    });
+}, 5000);
+</script>
+{% endblock %}

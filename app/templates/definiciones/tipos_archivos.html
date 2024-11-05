@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Definiciones - Tipos de Archivos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="/definiciones">Definiciones</a></li>
+            <li class="breadcrumb-item active">Tipos de Archivos</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Tipos de Archivos</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#tipoArchivoModal">
+            <i class="bi bi-plus-circle"></i> Nuevo Tipo
+        </button>
+    </div>
+
+    {% if mensaje_error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ mensaje_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if mensaje_exito %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ mensaje_exito }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tipo in tipos %}
+                        <tr>
+                            <td>{{ tipo.id }}</td>
+                            <td>{{ tipo.nombre }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning"
+                                        onclick="editarTipo('{{ tipo.id }}', '{{ tipo.nombre }}')">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not tipos %}
+                        <tr>
+                            <td colspan="3" class="text-center">No hay tipos de archivos registrados</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar tipo de archivo -->
+    <div class="modal fade" id="tipoArchivoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Nuevo Tipo de Archivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="tipoArchivoForm" action="/definiciones/tipos-archivos" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                            <div class="form-text">Ejemplo: Documentos, Imágenes, PDF, etc.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function editarTipo(id, nombre) {
+    const form = document.getElementById('tipoArchivoForm');
+    const modalTitle = document.getElementById('modalTitle');
+
+    form.action = `/definiciones/tipos-archivos/${id}/editar`;
+    modalTitle.textContent = 'Editar Tipo de Archivo';
+
+    document.getElementById('nombre').value = nombre;
+
+    new bootstrap.Modal(document.getElementById('tipoArchivoModal')).show();
+}
+
+// Limpiar el formulario cuando se abre el modal para crear
+document.getElementById('tipoArchivoModal').addEventListener('show.bs.modal', function (event) {
+    if (event.relatedTarget && event.relatedTarget.getAttribute('data-bs-target') === '#tipoArchivoModal') {
+        document.getElementById('tipoArchivoForm').reset();
+        document.getElementById('tipoArchivoForm').action = '/definiciones/tipos-archivos';
+        document.getElementById('modalTitle').textContent = 'Nuevo Tipo de Archivo';
+    }
+});
+
+// Autoclose de las alertas después de 5 segundos
+window.setTimeout(function() {
+    $('.alert').fadeTo(500, 0).slideUp(500, function(){
+        $(this).remove();
+    });
+}, 5000);
+</script>
+{% endblock %}

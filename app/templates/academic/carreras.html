@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Carreras - {{ facultad.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/facultades">Facultades</a></li>
+            <li class="breadcrumb-item active">{{ facultad.nombre }}</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">Carreras de {{ facultad.nombre }}</h1>
+
+    <!-- Mensajes de error y éxito -->
+    {% if mensaje_error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ mensaje_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if mensaje_exito %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ mensaje_exito }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#carreraModal">
+        Nueva Carrera
+    </button>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for carrera in carreras %}
+                <tr>
+                    <td>{{ carrera.id }}</td>
+                    <td>{{ carrera.codigo }}</td>
+                    <td>{{ carrera.nombre }}</td>
+                    <td>{{ carrera.estado.nombre }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="/carreras/{{ carrera.id }}/materias" class="btn btn-sm btn-info">
+                                Ver Materias
+                            </a>
+                            <button class="btn btn-sm btn-warning"
+                                    onclick="editarCarrera('{{ carrera.id }}', '{{ carrera.codigo }}', '{{ carrera.nombre }}', '{{ carrera.estado_id }}')">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarCarrera('{{ carrera.id }}')">
+                                Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal para crear/editar carrera -->
+    <div class="modal fade" id="carreraModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Nueva Carrera</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="carreraForm" action="/facultades/{{ facultad.id }}/carreras" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label">Código</label>
+                            <input type="text" class="form-control" id="codigo" name="codigo" required
+                                   maxlength="10" pattern="^[A-Za-z0-9]+$"
+                                   title="Solo letras y números, sin espacios ni caracteres especiales">
+                            <div class="form-text">Solo letras y números, máximo 10 caracteres.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="estado_id" class="form-label">Estado</label>
+                            <select class="form-select" id="estado_id" name="estado_id" required>
+                                {% for estado in estados %}
+                                <option value="{{ estado.id }}">{{ estado.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario oculto para eliminar -->
+    <form id="deleteForm" method="post" style="display: none;"></form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function editarCarrera(id, codigo, nombre, estadoId) {
+    const form = document.getElementById('carreraForm');
+    const modalTitle = document.getElementById('modalTitle');
+
+    form.action = `/carreras/${id}/editar`;
+    modalTitle.textContent = 'Editar Carrera';
+
+    document.getElementById('codigo').value = codigo;
+    document.getElementById('nombre').value = nombre;
+    document.getElementById('estado_id').value = estadoId;
+
+    new bootstrap.Modal(document.getElementById('carreraModal')).show();
+}
+
+function eliminarCarrera(id) {
+    if (confirm('¿Está seguro de eliminar esta carrera? Se eliminarán también todas sus materias asociadas.')) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/carreras/${id}/eliminar`;
+        form.submit();
+    }
+}
+
+// Limpiar el formulario cuando se abre el modal para crear
+document.getElementById('carreraModal').addEventListener('show.bs.modal', function (event) {
+    if (event.relatedTarget.getAttribute('data-bs-target') === '#carreraModal') {
+        document.getElementById('carreraForm').reset();
+        document.getElementById('carreraForm').action = `/facultades/{{ facultad.id }}/carreras`;
+        document.getElementById('modalTitle').textContent = 'Nueva Carrera';
+    }
+});
+
+// Autoclose de las alertas después de 5 segundos
+window.setTimeout(function() {
+    $('.alert').fadeTo(500, 0).slideUp(500, function(){
+        $(this).remove();
+    });
+}, 5000);
+</script>
+{% endblock %}

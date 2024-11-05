@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ proyecto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/proyectos">Proyectos</a></li>
+            <li class="breadcrumb-item active">{{ proyecto.nombre }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ proyecto.nombre }}</h1>
+        <div class="btn-group">
+            <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="/proyectos/{{ proyecto.id }}/archivos" class="btn btn-info">
+                <i class="bi bi-folder"></i> Archivos
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información básica -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información del Proyecto</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Estado:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-{{ 'success' if proyecto.estado.nombre == 'Activo' else 'danger' }}">
+                                {{ proyecto.estado.nombre }}
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4">Profesor:</dt>
+                        <dd class="col-sm-8">
+                            {{ proyecto.profesor.persona.nombres }} {{ proyecto.profesor.persona.apellidos }}
+                        </dd>
+
+                        <dt class="col-sm-4">Fecha de Creación:</dt>
+                        <dd class="col-sm-8">{{ proyecto.fecha.strftime('%d/%m/%Y %H:%M') }}</dd>
+
+                        <dt class="col-sm-4">Descripción:</dt>
+                        <dd class="col-sm-8">{{ proyecto.descripcion }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Materias asignadas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Materias Asignadas</h5>
+                </div>
+                <div class="card-body">
+                    {% if proyecto.materias %}
+                    <ul class="list-group">
+                        {% for proyecto_materia in proyecto.materias %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ proyecto_materia.materia.codigo }}</strong>
+                                - {{ proyecto_materia.materia.nombre }}
+                            </div>
+                            <span class="badge bg-primary rounded-pill">
+                                {{ proyecto_materia.materia.carrera.nombre }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay materias asignadas</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alumnos y archivos -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Alumnos Participantes</h5>
+                </div>
+                <div class="card-body">
+                    {% if proyecto.alumnos %}
+                    <ul class="list-group">
+                        {% for alumno_proyecto in proyecto.alumnos %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">
+                                        {{ alumno_proyecto.alumno.persona.nombres }}
+                                        {{ alumno_proyecto.alumno.persona.apellidos }}
+                                    </h6>
+                                    <small class="text-muted">
+                                        Matrícula: {{ alumno_proyecto.alumno.matricula }}
+                                    </small>
+                                </div>
+                                <span class="badge bg-secondary">
+                                    {{ alumno_proyecto.alumno.carrera.nombre }}
+                                </span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay alumnos asignados</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Últimos archivos -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Últimos Archivos</h5>
+                    <a href="/proyectos/{{ proyecto.id }}/archivos" class="btn btn-sm btn-primary">
+                        Ver Todos
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if proyecto.archivos %}
+                    <ul class="list-group">
+                        {% for archivo in proyecto.archivos[:5] %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-file-earmark"></i>
+                                    {{ archivo.ruta.split('/')[-1] }}
+                                </div>
+                                <span class="badge bg-secondary">{{ archivo.tipo_archivo.nombre }}</span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay archivos subidos</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

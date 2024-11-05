@@ -1,0 +1,30 @@
+<!-- Sección de archivos simplificada -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Archivos del Proyecto</h5>
+        <a href="/proyectos/{{ proyecto.id }}/archivos" class="btn btn-sm btn-primary">
+            Ver Todos
+        </a>
+    </div>
+    <div class="card-body">
+        {% if proyecto.archivos %}
+        <div class="list-group">
+            {% for archivo in proyecto.archivos[:5] %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-earmark me-2"></i>
+                        {{ archivo.ruta.split('/')[-1] }}
+                    </div>
+                    <span class="badge bg-secondary">
+                        {{ archivo.tipo_archivo.nombre }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No hay archivos en este proyecto</p>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Persona{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Editar Persona</h1>
+
+    <form action="/personas/{{ persona.id }}/editar" method="post">
+        <div class="mb-3">
+            <label for="nombres" class="form-label">Nombres</label>
+            <input type="text" class="form-control" id="nombres" name="nombres" value="{{ persona.nombres }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="apellidos" class="form-label">Apellidos</label>
+            <input type="text" class="form-control" id="apellidos" name="apellidos" value="{{ persona.apellidos }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="rol_id" class="form-label">Rol</label>
+            <select class="form-select" id="rol_id" name="rol_id" required onchange="toggleCarrera()">
+                {% for rol in roles %}
+                <option value="{{ rol.id }}" {% if rol.id == persona.rol_id %}selected{% endif %}>
+                    {{ rol.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="matricula" class="form-label">Matrícula</label>
+            <input type="text" class="form-control" id="matricula" name="matricula" value="{{ matricula }}" required>
+        </div>
+        <div class="mb-3" id="carreraDiv" {% if persona.rol_id != 3 %}style="display: none;"{% endif %}>
+            <label for="carreras_id" class="form-label">Carrera</label>
+            <select class="form-select" id="carreras_id" name="carreras_id" {% if persona.rol_id == 3 %}required{% endif %}>
+                {% for carrera in carreras %}
+                <option value="{{ carrera.id }}" {% if carrera.id == carrera_id %}selected{% endif %}>
+                    {{ carrera.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="estado_id" class="form-label">Estado</label>
+            <select class="form-select" id="estado_id" name="estado_id" required>
+                {% for estado in estados %}
+                <option value="{{ estado.id }}" {% if estado.id == persona.estado_id %}selected{% endif %}>
+                    {{ estado.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="telefono" class="form-label">Teléfono</label>
+            <input type="text" class="form-control" id="telefono" name="telefono" value="{{ persona.telefono }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="correo" class="form-label">Correo</label>
+            <input type="email" class="form-control" id="correo" name="correo" value="{{ persona.correo }}" required>
+        </div>
+        <div class="mb-3">
+            <a href="/personas" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCarrera() {
+    const rolSelect = document.getElementById('rol_id');
+    const carreraDiv = document.getElementById('carreraDiv');
+    const carreraSelect = document.getElementById('carreras_id');
+
+    if (rolSelect.value === '3') {  // Si es alumno
+        carreraDiv.style.display = 'block';
+        carreraSelect.required = true;
+    } else {
+        carreraDiv.style.display = 'none';
+        carreraSelect.required = false;
+    }
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', toggleCarrera);
+</script>
+{% endblock %}

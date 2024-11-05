@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Editar {{ proyecto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/proyectos">Proyectos</a></li>
+            <li class="breadcrumb-item active">Editar Proyecto</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">Editar Proyecto</h1>
+
+    <form action="/proyectos/{{ proyecto.id }}/editar" method="post">
+        <div class="row">
+            <!-- Información básica -->
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        Información Básica
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre del Proyecto</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ proyecto.nombre }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion" rows="3" required>{{ proyecto.descripcion }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="estado_id" class="form-label">Estado</label>
+                            <select class="form-select" id="estado_id" name="estado_id" required>
+                                {% for estado in estados %}
+                                <option value="{{ estado.id }}" {% if estado.id == proyecto.estado_id %}selected{% endif %}>
+                                    {{ estado.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="profesor_id" class="form-label">Profesor Responsable</label>
+                            <select class="form-select" id="profesor_id" name="profesor_id" required>
+                                <option value="">Seleccione un profesor...</option>
+                                {% for profesor in profesores %}
+                                <option value="{{ profesor.id }}" {% if profesor.id == proyecto.profesor_id %}selected{% endif %}>
+                                    {{ profesor.persona.nombres }} {{ profesor.persona.apellidos }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asignaciones -->
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        Asignaciones
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="materias" class="form-label">Materias</label>
+                            <select multiple class="form-select" id="materias" name="materia_ids" size="5">
+                                {% for materia in materias %}
+                                <option value="{{ materia.id }}"
+                                    {% if materia.id in proyecto.materias|map(attribute='materias_id')|list %}selected{% endif %}>
+                                    {{ materia.codigo }} - {{ materia.nombre }} ({{ materia.carrera.nombre }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Mantén presionado Ctrl para seleccionar múltiples materias</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="alumnos" class="form-label">Alumnos</label>
+                            <select multiple class="form-select" id="alumnos" name="alumno_ids" size="5">
+                                {% for alumno in alumnos %}
+                                <option value="{{ alumno.id }}"
+                                    {% if alumno.id in proyecto.alumnos|map(attribute='alumnos_id')|list %}selected{% endif %}>
+                                    {{ alumno.matricula }} - {{ alumno.persona.nombres }} {{ alumno.persona.apellidos }}
+                                    ({{ alumno.carrera.nombre }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Mantén presionado Ctrl para seleccionar múltiples alumnos</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end mt-3">
+            <a href="/proyectos/{{ proyecto.id }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

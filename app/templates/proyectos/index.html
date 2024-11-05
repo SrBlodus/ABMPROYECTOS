@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Proyectos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Gestión de Proyectos</h1>
+
+    <!-- Mensajes de error y éxito -->
+    {% if mensaje_error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ mensaje_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if mensaje_exito %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ mensaje_exito }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <a href="/proyectos/nuevo" class="btn btn-primary mb-3">
+        <i class="bi bi-plus-circle"></i> Nuevo Proyecto
+    </a>
+
+    <!-- Tabla de proyectos -->
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Materias</th>
+                    <th>Alumnos</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proyecto in proyectos %}
+                <tr>
+                    <td>{{ proyecto.nombre }}</td>
+                    <td>{{ proyecto.fecha.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <span class="badge bg-{{ 'success' if proyecto.estado.nombre == 'Activo' else 'danger' }}">
+                            {{ proyecto.estado.nombre }}
+                        </span>
+                    </td>
+                    <td>
+                        {{ proyecto.materias|length }} materia(s)
+                    </td>
+                    <td>
+                        {{ proyecto.alumnos|length }} alumno(s)
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="/proyectos/{{ proyecto.id }}" class="btn btn-sm btn-info">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                            <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <button onclick="eliminarProyecto({{ proyecto.id }})" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not proyectos %}
+                <tr>
+                    <td colspan="6" class="text-center">No hay proyectos registrados</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Formulario oculto para eliminar -->
+    <form id="deleteForm" method="post" style="display: none;"></form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function eliminarProyecto(id) {
+    if (confirm('¿Está seguro de eliminar este proyecto? Esta acción no se puede deshacer.')) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/proyectos/${id}/eliminar`;
+        form.submit();
+    }
+}
+
+// Autoclose de las alertas después de 5 segundos
+window.setTimeout(function() {
+    $('.alert').fadeTo(500, 0).slideUp(500, function(){
+        $(this).remove();
+    });
+}, 5000);
+</script>
+{% endblock %}

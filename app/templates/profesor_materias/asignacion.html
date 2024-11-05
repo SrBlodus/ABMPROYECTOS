@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Asignación de Materias - {{ profesor.persona.nombres }} {{ profesor.persona.apellidos }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/personas">Personas</a></li>
+            <li class="breadcrumb-item active">Asignación de Materias</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">Materias asignadas a {{ profesor.persona.nombres }} {{ profesor.persona.apellidos }}</h1>
+
+    {% if mensaje_error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ mensaje_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if mensaje_exito %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ mensaje_exito }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- Formulario para asignar nueva materia -->
+    <div class="card mb-4">
+        <div class="card-header">
+            Asignar Nueva Materia
+        </div>
+        <div class="card-body">
+            <form action="/profesores/{{ profesor.id }}/asignar-materia" method="post">
+                <div class="row align-items-end">
+                    <div class="col-md-8">
+                        <label for="materia_id" class="form-label">Seleccionar Materia</label>
+                        <select class="form-select" id="materia_id" name="materia_id" required>
+                            <option value="">Seleccione una materia...</option>
+                            {% for materia in materias_disponibles %}
+                            <option value="{{ materia.id }}">{{ materia.codigo }} - {{ materia.nombre }} ({{ materia.carrera.nombre }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">Asignar Materia</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de materias asignadas -->
+    <div class="card">
+        <div class="card-header">
+            Materias Actuales
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Carrera</th>
+                            <th>Curso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for materia in profesor.materias %}
+                        <tr>
+                            <td>{{ materia.codigo }}</td>
+                            <td>{{ materia.nombre }}</td>
+                            <td>{{ materia.carrera.nombre }}</td>
+                            <td>{{ materia.curso }}° Curso</td>
+                            <td>
+                                <form action="/profesores/{{ profesor.id }}/quitar-materia/{{ materia.id }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Está seguro de quitar esta materia?')">
+                                        Quitar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not profesor.materias %}
+                        <tr>
+                            <td colspan="5" class="text-center">No hay materias asignadas</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Autoclose de las alertas después de 5 segundos
+window.setTimeout(function() {
+    $('.alert').fadeTo(500, 0).slideUp(500, function(){
+        $(this).remove();
+    });
+}, 5000);
+</script>
+{% endblock %}
