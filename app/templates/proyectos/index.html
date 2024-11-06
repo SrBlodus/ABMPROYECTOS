@@ -21,9 +21,11 @@
     </div>
     {% endif %}
 
+    {% if user and user.rol_id == 2 %}
     <a href="/proyectos/nuevo" class="btn btn-primary mb-3">
-        <i class="bi bi-plus-circle"></i> Nuevo Proyecto
+        <i class="bi bi-plus-circle me-2"></i>Nuevo Proyecto
     </a>
+    {% endif %}
 
     <!-- Tabla de proyectos -->
     <div class="table-responsive">
@@ -31,6 +33,7 @@
             <thead>
                 <tr>
                     <th>Nombre</th>
+                    <th>Profesor</th>
                     <th>Fecha</th>
                     <th>Estado</th>
                     <th>Materias</th>
@@ -40,38 +43,51 @@
             </thead>
             <tbody>
                 {% for proyecto in proyectos %}
-                <tr>
+                <tr {% if user and user.rol_id == 3 and proyecto.id in user_proyectos %}class="table-primary"{% endif %}>
                     <td>{{ proyecto.nombre }}</td>
+                    <td>{{ proyecto.profesor.persona.nombres }} {{ proyecto.profesor.persona.apellidos }}</td>
                     <td>{{ proyecto.fecha.strftime('%d/%m/%Y') }}</td>
                     <td>
-                        <span class="badge bg-{{ 'success' if proyecto.estado.nombre == 'Activo' else 'danger' }}">
+                        <span class="badge bg-{{ 'success' if proyecto.estado.nombre == 'Activo' else 'secondary' }}">
                             {{ proyecto.estado.nombre }}
                         </span>
                     </td>
                     <td>
-                        {{ proyecto.materias|length }} materia(s)
+                        <span class="badge bg-info">
+                            {{ proyecto.materias|length }} materia(s)
+                        </span>
                     </td>
                     <td>
-                        {{ proyecto.alumnos|length }} alumno(s)
+                        <span class="badge bg-primary">
+                            {{ proyecto.alumnos|length }} alumno(s)
+                        </span>
                     </td>
                     <td>
                         <div class="btn-group">
                             <a href="/proyectos/{{ proyecto.id }}" class="btn btn-sm btn-info">
                                 <i class="bi bi-eye"></i> Ver
                             </a>
-                            <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-sm btn-warning">
-                                <i class="bi bi-pencil"></i> Editar
-                            </a>
-                            <button onclick="eliminarProyecto({{ proyecto.id }})" class="btn btn-sm btn-danger">
-                                <i class="bi bi-trash"></i> Eliminar
-                            </button>
+                            {% if user %}
+                                {% if user.rol_id == 2 and user.persona_id == proyecto.profesor.persona_id %}
+                                    <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                    <button onclick="eliminarProyecto({{ proyecto.id }})" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
+                                {% elif user.rol_id == 3 and proyecto.id in user_proyectos %}
+                                    <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                {% endif %}
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
                 {% endfor %}
                 {% if not proyectos %}
                 <tr>
-                    <td colspan="6" class="text-center">No hay proyectos registrados</td>
+                    <td colspan="7" class="text-center">No hay proyectos registrados</td>
                 </tr>
                 {% endif %}
             </tbody>
@@ -81,6 +97,15 @@
     <!-- Formulario oculto para eliminar -->
     <form id="deleteForm" method="post" style="display: none;"></form>
 </div>
+
+{% if user and user.rol_id == 3 %}
+<div class="container mt-3">
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        Los proyectos resaltados en azul son aquellos en los que estás participando.
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -94,10 +119,25 @@ function eliminarProyecto(id) {
 }
 
 // Autoclose de las alertas después de 5 segundos
-window.setTimeout(function() {
-    $('.alert').fadeTo(500, 0).slideUp(500, function(){
-        $(this).remove();
-    });
-}, 5000);
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        document.querySelectorAll('.alert').forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}
+
+{% block nav_active %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectosLink = document.querySelector('a[href="/proyectos"]');
+    if (proyectosLink) {
+        proyectosLink.classList.remove('text-white');
+        proyectosLink.classList.add('active');
+    }
+});
 </script>
 {% endblock %}

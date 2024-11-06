@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ proyecto.nombre }}{% endblock %}
+{% block title %}{{ proyecto.nombre }} - Detalle de Proyecto{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -11,138 +11,199 @@
         </ol>
     </nav>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>{{ proyecto.nombre }}</h1>
-        <div class="btn-group">
-            <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-warning">
-                <i class="bi bi-pencil"></i> Editar
-            </a>
-            <a href="/proyectos/{{ proyecto.id }}/archivos" class="btn btn-info">
-                <i class="bi bi-folder"></i> Archivos
-            </a>
-        </div>
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ request.query_params.get('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
+    {% endif %}
 
-    <div class="row">
-        <!-- Información básica -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Información del Proyecto</h5>
-                </div>
-                <div class="card-body">
+    {% if request.query_params.get('exito') %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ request.query_params.get('exito') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{{ proyecto.nombre }}</h4>
+            <div class="btn-group">
+                {% if can_edit %}
+                    <a href="/proyectos/{{ proyecto.id }}/editar" class="btn btn-warning">
+                        <i class="bi bi-pencil me-2"></i>Editar
+                    </a>
+                {% endif %}
+                {% if can_delete %}
+                    <button onclick="confirmarEliminar({{ proyecto.id }})" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Eliminar
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <h5>Detalles del Proyecto</h5>
                     <dl class="row">
-                        <dt class="col-sm-4">Estado:</dt>
-                        <dd class="col-sm-8">
-                            <span class="badge bg-{{ 'success' if proyecto.estado.nombre == 'Activo' else 'danger' }}">
+                        <dt class="col-sm-3">Profesor:</dt>
+                        <dd class="col-sm-9">{{ proyecto.profesor.persona.nombres }} {{ proyecto.profesor.persona.apellidos }}</dd>
+
+                        <dt class="col-sm-3">Estado:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-{{ 'success' if proyecto.estado.nombre == 'Activo' else 'secondary' }}">
                                 {{ proyecto.estado.nombre }}
                             </span>
                         </dd>
 
-                        <dt class="col-sm-4">Profesor:</dt>
-                        <dd class="col-sm-8">
-                            {{ proyecto.profesor.persona.nombres }} {{ proyecto.profesor.persona.apellidos }}
-                        </dd>
+                        <dt class="col-sm-3">Fecha:</dt>
+                        <dd class="col-sm-9">{{ proyecto.fecha.strftime('%d/%m/%Y') }}</dd>
 
-                        <dt class="col-sm-4">Fecha de Creación:</dt>
-                        <dd class="col-sm-8">{{ proyecto.fecha.strftime('%d/%m/%Y %H:%M') }}</dd>
-
-                        <dt class="col-sm-4">Descripción:</dt>
-                        <dd class="col-sm-8">{{ proyecto.descripcion }}</dd>
+                        <dt class="col-sm-3">Descripción:</dt>
+                        <dd class="col-sm-9">{{ proyecto.descripcion }}</dd>
                     </dl>
                 </div>
-            </div>
-
-            <!-- Materias asignadas -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Materias Asignadas</h5>
-                </div>
-                <div class="card-body">
-                    {% if proyecto.materias %}
-                    <ul class="list-group">
-                        {% for proyecto_materia in proyecto.materias %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ proyecto_materia.materia.codigo }}</strong>
-                                - {{ proyecto_materia.materia.nombre }}
+                <div class="col-md-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Materias Relacionadas</h6>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            {% for proyecto_materia in proyecto.materias %}
+                            <div class="list-group-item">
+                                <i class="bi bi-book me-2"></i>
+                                {{ proyecto_materia.materia.nombre }}
                             </div>
-                            <span class="badge bg-primary rounded-pill">
-                                {{ proyecto_materia.materia.carrera.nombre }}
-                            </span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <p class="text-muted mb-0">No hay materias asignadas</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+                            {% endfor %}
+                        </div>
+                    </div>
 
-        <!-- Alumnos y archivos -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Alumnos Participantes</h5>
-                </div>
-                <div class="card-body">
-                    {% if proyecto.alumnos %}
-                    <ul class="list-group">
-                        {% for alumno_proyecto in proyecto.alumnos %}
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0">
-                                        {{ alumno_proyecto.alumno.persona.nombres }}
-                                        {{ alumno_proyecto.alumno.persona.apellidos }}
-                                    </h6>
-                                    <small class="text-muted">
-                                        Matrícula: {{ alumno_proyecto.alumno.matricula }}
-                                    </small>
-                                </div>
-                                <span class="badge bg-secondary">
-                                    {{ alumno_proyecto.alumno.carrera.nombre }}
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Alumnos Participantes</h6>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            {% for alumno_proyecto in proyecto.alumnos %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="bi bi-person me-2"></i>
+                                    {{ alumno_proyecto.alumno.persona.nombres }}
+                                    {{ alumno_proyecto.alumno.persona.apellidos }}
                                 </span>
+                                {% if user and user.persona_id == alumno_proyecto.alumno.persona_id %}
+                                <span class="badge bg-primary">Tú</span>
+                                {% endif %}
                             </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <p class="text-muted mb-0">No hay alumnos asignados</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Últimos archivos -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Últimos Archivos</h5>
-                    <a href="/proyectos/{{ proyecto.id }}/archivos" class="btn btn-sm btn-primary">
-                        Ver Todos
-                    </a>
-                </div>
-                <div class="card-body">
-                    {% if proyecto.archivos %}
-                    <ul class="list-group">
-                        {% for archivo in proyecto.archivos[:5] %}
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-file-earmark"></i>
-                                    {{ archivo.ruta.split('/')[-1] }}
-                                </div>
-                                <span class="badge bg-secondary">{{ archivo.tipo_archivo.nombre }}</span>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <p class="text-muted mb-0">No hay archivos subidos</p>
-                    {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    {% if not can_edit and user and user.rol_id == 3 %}
+    <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle me-2"></i>
+        No puedes editar este proyecto porque no estás vinculado como alumno participante.
+    </div>
+    {% endif %}
+
+    <!-- Agregar esta sección donde quieras mostrar los archivos en el detalle del proyecto -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Archivos del Proyecto</h5>
+            {% if can_edit %}
+            <div>
+                <a href="/proyectos/{{ proyecto.id }}/archivos" class="btn btn-primary btn-sm">
+                    <i class="bi bi-folder me-2"></i>Ver Todos
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if proyecto.archivos %}
+            <div class="list-group list-group-flush">
+                {% for archivo in proyecto.archivos[:5] %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-file-earmark me-2"></i>
+                            {{ archivo.ruta.split('/')[-1] }}
+                            <span class="badge bg-secondary ms-2">{{ archivo.tipo_archivo.nombre }}</span>
+                        </div>
+                        <div>
+                            <a href="/proyectos/{{ proyecto.id }}/archivos/{{ archivo.id }}/descargar"
+                               class="btn btn-sm btn-success">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if proyecto.archivos|length > 5 %}
+                <div class="list-group-item text-center">
+                    <a href="/proyectos/{{ proyecto.id }}/archivos" class="text-muted">
+                        Ver todos los archivos...
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="text-muted text-center mb-0">No hay archivos adjuntos a este proyecto</p>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <!-- Formulario oculto para eliminar -->
+    <form id="deleteForm" method="POST" style="display: none;"></form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Función para eliminar proyecto
+function confirmarEliminar(proyectoId) {
+    if (confirm('¿Está seguro que desea eliminar este proyecto? Esta acción no se puede deshacer.')) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/proyectos/${proyectoId}/eliminar`;
+        form.submit();
+    }
+}
+
+// Función para eliminar archivo
+function eliminarArchivo(archivoId) {
+    if (confirm('¿Está seguro de eliminar este archivo? Esta acción no se puede deshacer.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/archivos/${archivoId}/eliminar`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Autoclose de las alertas después de 5 segundos
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        document.querySelectorAll('.alert').forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}
+
+{% block nav_active %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectosLink = document.querySelector('a[href="/proyectos"]');
+    if (proyectosLink) {
+        proyectosLink.classList.remove('text-white');
+        proyectosLink.classList.add('active');
+    }
+});
+</script>
 {% endblock %}

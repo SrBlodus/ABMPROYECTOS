@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Archivos - {{ proyecto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/proyectos">Proyectos</a></li>
+            <li class="breadcrumb-item"><a href="/proyectos/{{ proyecto.id }}">{{ proyecto.nombre }}</a></li>
+            <li class="breadcrumb-item active">Archivos</li>
+        </ol>
+    </nav>
+
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ request.query_params.get('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('exito') %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ request.query_params.get('exito') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Archivos del Proyecto</h5>
+            {% if can_edit %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#subirArchivoModal">
+                <i class="bi bi-upload me-2"></i>Subir Archivo
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if proyecto.archivos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for archivo in proyecto.archivos %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-file-earmark me-2"></i>
+                                {{ archivo.ruta.split('/')[-1] }}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    {{ archivo.tipo_archivo.nombre }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="/proyectos/{{ proyecto.id }}/archivos/{{ archivo.id }}/descargar"
+                                       class="btn btn-sm btn-success">
+                                        <i class="bi bi-download me-1"></i>Descargar
+                                    </a>
+                                    {% if can_edit %}
+                                    <button onclick="eliminarArchivo({{ archivo.id }})"
+                                            class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash me-1"></i>Eliminar
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center mb-0">No hay archivos adjuntos a este proyecto</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if can_edit %}
+    <!-- Modal para subir archivo -->
+    <div class="modal fade" id="subirArchivoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Subir Archivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/proyectos/{{ proyecto.id }}/archivos/subir"
+                      method="post"
+                      enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="tipo_archivo_id" class="form-label">Tipo de Archivo</label>
+                            <select class="form-select" id="tipo_archivo_id" name="tipo_archivo_id" required>
+                                <option value="">Seleccione un tipo...</option>
+                                {% for tipo in tipos_archivos %}
+                                <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="archivo" class="form-label">Archivo</label>
+                            <input type="file" class="form-control" id="archivo" name="archivo" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-2"></i>Subir
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario oculto para eliminar -->
+    <form id="deleteForm" method="POST" style="display: none;"></form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function eliminarArchivo(archivoId) {
+    if (confirm('¿Está seguro de eliminar este archivo? Esta acción no se puede deshacer.')) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/proyectos/{{ proyecto.id }}/archivos/${archivoId}/eliminar`;
+        form.submit();
+    }
+}
+
+// Autoclose de las alertas después de 5 segundos
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        document.querySelectorAll('.alert').forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}
+
+{% block nav_active %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectosLink = document.querySelector('a[href="/proyectos"]');
+    if (proyectosLink) {
+        proyectosLink.classList.remove('text-white');
+        proyectosLink.classList.add('active');
+    }
+});
+</script>
+{% endblock %}

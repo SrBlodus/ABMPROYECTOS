@@ -1,101 +1,161 @@
 {% extends "base.html" %}
 
-{% block title %}Editar {{ proyecto.nombre }}{% endblock %}
+{% block title %}Editar Proyecto - {{ proyecto.nombre }}{% endblock %}
 
 {% block content %}
 <div class="container">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/proyectos">Proyectos</a></li>
-            <li class="breadcrumb-item active">Editar Proyecto</li>
+            <li class="breadcrumb-item"><a href="/proyectos/{{ proyecto.id }}">{{ proyecto.nombre }}</a></li>
+            <li class="breadcrumb-item active">Editar</li>
         </ol>
     </nav>
 
-    <h1 class="mb-4">Editar Proyecto</h1>
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ request.query_params.get('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
 
-    <form action="/proyectos/{{ proyecto.id }}/editar" method="post">
-        <div class="row">
-            <!-- Información básica -->
-            <div class="col-md-6">
-                <div class="card mb-3">
-                    <div class="card-header">
-                        Información Básica
-                    </div>
-                    <div class="card-body">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0">Editar Proyecto</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="/proyectos/{{ proyecto.id }}/editar">
+                <div class="row">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label for="nombre" class="form-label">Nombre del Proyecto</label>
-                            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ proyecto.nombre }}" required>
+                            <input type="text" class="form-control" id="nombre" name="nombre"
+                                   value="{{ proyecto.nombre }}" required>
                         </div>
+
                         <div class="mb-3">
                             <label for="descripcion" class="form-label">Descripción</label>
-                            <textarea class="form-control" id="descripcion" name="descripcion" rows="3" required>{{ proyecto.descripcion }}</textarea>
+                            <textarea class="form-control" id="descripcion" name="descripcion"
+                                    rows="4" required>{{ proyecto.descripcion }}</textarea>
                         </div>
+
                         <div class="mb-3">
                             <label for="estado_id" class="form-label">Estado</label>
                             <select class="form-select" id="estado_id" name="estado_id" required>
                                 {% for estado in estados %}
-                                <option value="{{ estado.id }}" {% if estado.id == proyecto.estado_id %}selected{% endif %}>
+                                <option value="{{ estado.id }}"
+                                        {% if estado.id == proyecto.estado_id %}selected{% endif %}>
                                     {{ estado.nombre }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="profesor_id" class="form-label">Profesor Responsable</label>
-                            <select class="form-select" id="profesor_id" name="profesor_id" required>
-                                <option value="">Seleccione un profesor...</option>
-                                {% for profesor in profesores %}
-                                <option value="{{ profesor.id }}" {% if profesor.id == proyecto.profesor_id %}selected{% endif %}>
-                                    {{ profesor.persona.nombres }} {{ profesor.persona.apellidos }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Asignaciones -->
-            <div class="col-md-6">
-                <div class="card mb-3">
-                    <div class="card-header">
-                        Asignaciones
-                    </div>
-                    <div class="card-body">
+                    {% if is_profesor %}
+                    <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="materias" class="form-label">Materias</label>
-                            <select multiple class="form-select" id="materias" name="materia_ids" size="5">
+                            <label for="materia_ids" class="form-label">Materias</label>
+                            <select class="form-select" id="materia_ids" name="materia_ids"
+                                    multiple size="5" required>
                                 {% for materia in materias %}
                                 <option value="{{ materia.id }}"
-                                    {% if materia.id in proyecto.materias|map(attribute='materias_id')|list %}selected{% endif %}>
-                                    {{ materia.codigo }} - {{ materia.nombre }} ({{ materia.carrera.nombre }})
+                                        {% if materia.id in proyecto.materias|map(attribute='materias_id')|list %}
+                                        selected{% endif %}>
+                                    {{ materia.nombre }}
                                 </option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Mantén presionado Ctrl para seleccionar múltiples materias</div>
+                            <div class="form-text">
+                                Mantén presionada la tecla Ctrl para seleccionar múltiples materias
+                            </div>
                         </div>
+
                         <div class="mb-3">
-                            <label for="alumnos" class="form-label">Alumnos</label>
-                            <select multiple class="form-select" id="alumnos" name="alumno_ids" size="5">
+                            <label for="alumno_ids" class="form-label">Alumnos</label>
+                            <select class="form-select" id="alumno_ids" name="alumno_ids"
+                                    multiple size="5" required>
                                 {% for alumno in alumnos %}
                                 <option value="{{ alumno.id }}"
-                                    {% if alumno.id in proyecto.alumnos|map(attribute='alumnos_id')|list %}selected{% endif %}>
-                                    {{ alumno.matricula }} - {{ alumno.persona.nombres }} {{ alumno.persona.apellidos }}
-                                    ({{ alumno.carrera.nombre }})
+                                        {% if alumno.id in proyecto.alumnos|map(attribute='alumnos_id')|list %}
+                                        selected{% endif %}>
+                                    {{ alumno.persona.nombres }} {{ alumno.persona.apellidos }}
                                 </option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Mantén presionado Ctrl para seleccionar múltiples alumnos</div>
+                            <div class="form-text">
+                                Mantén presionada la tecla Ctrl para seleccionar múltiples alumnos
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
-            </div>
-        </div>
 
-        <div class="text-end mt-3">
-            <a href="/proyectos/{{ proyecto.id }}" class="btn btn-secondary">Cancelar</a>
-            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                {% if user.rol_id == 3 and not is_profesor %}
+                <div class="alert alert-info" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Como alumno, solo puedes modificar la información básica del proyecto.
+                    Los cambios en materias y alumnos solo pueden ser realizados por el profesor.
+                </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Cambios
+                    </button>
+                    <a href="/proyectos/{{ proyecto.id }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </a>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Autoclose de las alertas después de 5 segundos
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        document.querySelectorAll('.alert').forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    if ({{ 'true' if is_profesor else 'false' }}) {
+        const materias = document.getElementById('materia_ids');
+        const alumnos = document.getElementById('alumno_ids');
+
+        if (materias.selectedOptions.length === 0) {
+            e.preventDefault();
+            alert('Debe seleccionar al menos una materia');
+            return false;
+        }
+
+        if (alumnos.selectedOptions.length === 0) {
+            e.preventDefault();
+            alert('Debe seleccionar al menos un alumno');
+            return false;
+        }
+    }
+    return true;
+});
+</script>
+{% endblock %}
+
+{% block nav_active %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectosLink = document.querySelector('a[href="/proyectos"]');
+    if (proyectosLink) {
+        proyectosLink.classList.remove('text-white');
+        proyectosLink.classList.add('active');
+    }
+});
+</script>
 {% endblock %}

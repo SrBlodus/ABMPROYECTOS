@@ -1,72 +1,143 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Form, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
-from ..models import TiposArchivos, ArchivosXProyecto, Proyecto
+from ..models import (
+    Proyecto, ArchivosXProyecto, TiposArchivos, Usuario,
+    Profesor, Alumno, AlumnosXProyecto
+)
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+from .auth import get_current_user
 import os
+import shutil
+from typing import Optional
 from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/proyectos/{proyecto_id}/archivos",
+    tags=["archivos"]
+)
+
 templates = Jinja2Templates(directory="app/templates")
 
 
-# Ruta para ver archivos de un proyecto específico
-@router.get("/proyectos/{proyecto_id}/archivos")
-async def ver_archivos_proyecto(request: Request, proyecto_id: int, db: Session = Depends(get_db)):
+async def can_manage_files(
+        request: Request,
+        proyecto_id: int,
+        db: Session = Depends(get_db)
+) -> Optional[Usuario]:
+    user = await get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
     proyecto = db.query(Proyecto).filter(Proyecto.id == proyecto_id).first()
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
-    archivos = db.query(ArchivosXProyecto).filter(
-        ArchivosXProyecto.proyecto_id == proyecto_id
-    ).options(joinedload(ArchivosXProyecto.tipo_archivo)).all()
+    # Verificar si es profesor del proyecto
+    if user.rol_id == 2:
+        profesor = db.query(Profesor).filter(
+            Profesor.persona_id == user.persona_id
+        ).first()
+        if profesor and profesor.id == proyecto.profesor_id:
+            return user
 
-    tipos_archivos = db.query(TiposArchivos).all()
+    # Verificar si es alumno del proyecto
+    elif user.rol_id == 3:
+        alumno = db.query(Alumno).filter(
+            Alumno.persona_id == user.persona_id
+        ).first()
+        if alumno:
+            vinculacion = db.query(AlumnosXProyecto).filter(
+                AlumnosXProyecto.proyecto_id == proyecto_id,
+                AlumnosXProyecto.alumnos_id == alumno.id
+            ).first()
+            if vinculacion:
+                return user
 
-    return templates.TemplateResponse(
-        "archivos/proyecto_archivos.html",
-        {
-            "request": request,
-            "proyecto": proyecto,
-            "archivos": archivos,
-            "tipos_archivos": tipos_archivos,
-            "mensaje_error": request.query_params.get("error"),
-            "mensaje_exito": request.query_params.get("exito")
-        }
+    raise HTTPException(
+        status_code=403,
+        detail="No tienes permisos para gestionar archivos en este proyecto"
     )
 
 
-# Ruta para subir un archivo a un proyecto
-@router.post("/proyectos/{proyecto_id}/archivos/subir")
+@router.get("")
+async def ver_archivos(
+        request: Request,
+        proyecto_id: int,
+        db: Session = Depends(get_db)
+):
+    try:
+        user = await get_current_user(request, db)
+        proyecto = db.query(Proyecto).options(
+            joinedload(Proyecto.archivos).joinedload(ArchivosXProyecto.tipo_archivo)
+        ).filter(Proyecto.id == proyecto_id).first()
+
+        if not proyecto:
+            return RedirectResponse(
+                url="/proyectos?error=Proyecto no encontrado",
+                status_code=303
+            )
+
+        # Verificar permisos
+        can_edit = False
+        try:
+            await can_manage_files(request, proyecto_id, db)
+            can_edit = True
+        except:
+            pass
+
+        tipos_archivos = db.query(TiposArchivos).all()
+
+        return templates.TemplateResponse(
+            "archivos/index.html",
+            {
+                "request": request,
+                "proyecto": proyecto,
+                "tipos_archivos": tipos_archivos,
+                "user": user,
+                "can_edit": can_edit
+            }
+        )
+    except Exception as e:
+        return RedirectResponse(
+            url=f"/proyectos/{proyecto_id}?error={str(e)}",
+            status_code=303
+        )
+
+
+@router.post("/subir")
 async def subir_archivo(
         proyecto_id: int,
         archivo: UploadFile = File(...),
         tipo_archivo_id: int = Form(...),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(can_manage_files)
 ):
     try:
-        proyecto = db.query(Proyecto).filter(Proyecto.id == proyecto_id).first()
-        if not proyecto:
-            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+        # Verificar el tipo de archivo
+        tipo_archivo = db.query(TiposArchivos).filter(TiposArchivos.id == tipo_archivo_id).first()
+        if not tipo_archivo:
+            raise HTTPException(status_code=400, detail="Tipo de archivo no válido")
 
-        # Crear directorio para el proyecto si no existe
-        directorio = f"archivos/proyecto_{proyecto_id}"
-        os.makedirs(directorio, exist_ok=True)
+        # Crear directorio si no existe
+        proyecto_dir = f"archivos/proyecto_{proyecto_id}"
+        os.makedirs(proyecto_dir, exist_ok=True)
 
-        # Guardar el archivo con su nombre original
-        ruta_archivo = f"{directorio}/{archivo.filename}"
+        # Generar nombre único para el archivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{archivo.filename}"
+        file_path = os.path.join(proyecto_dir, filename)
 
         # Guardar el archivo
-        with open(ruta_archivo, "wb") as buffer:
-            content = await archivo.read()
-            buffer.write(content)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(archivo.file, buffer)
 
-        # Guardar registro en la base de datos usando ruta relativa
+        # Crear registro en la base de datos
         nuevo_archivo = ArchivosXProyecto(
             proyecto_id=proyecto_id,
             tipos_archivos_id=tipo_archivo_id,
-            ruta=ruta_archivo  # La ruta incluirá 'archivos/proyecto_X/nombre_archivo'
+            ruta=file_path
         )
         db.add(nuevo_archivo)
         db.commit()
@@ -76,16 +147,45 @@ async def subir_archivo(
             status_code=303
         )
     except Exception as e:
-        db.rollback()
         return RedirectResponse(
             url=f"/proyectos/{proyecto_id}/archivos?error={str(e)}",
             status_code=303
         )
 
 
-# Ruta para eliminar un archivo
-@router.post("/proyectos/{proyecto_id}/archivos/{archivo_id}/eliminar")
+@router.get("/{archivo_id}/descargar")
+async def descargar_archivo(
+        proyecto_id: int,
+        archivo_id: int,
+        db: Session = Depends(get_db)
+):
+    try:
+        archivo = db.query(ArchivosXProyecto).filter(
+            ArchivosXProyecto.id == archivo_id,
+            ArchivosXProyecto.proyecto_id == proyecto_id
+        ).first()
+
+        if not archivo:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+        if not os.path.exists(archivo.ruta):
+            raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor")
+
+        return FileResponse(
+            archivo.ruta,
+            filename=os.path.basename(archivo.ruta),
+            media_type="application/octet-stream"
+        )
+    except Exception as e:
+        return RedirectResponse(
+            url=f"/proyectos/{proyecto_id}/archivos?error={str(e)}",
+            status_code=303
+        )
+
+
+@router.post("/{archivo_id}/eliminar")
 async def eliminar_archivo(
+        request: Request,
         proyecto_id: int,
         archivo_id: int,
         db: Session = Depends(get_db)
@@ -102,6 +202,9 @@ async def eliminar_archivo(
                 status_code=303
             )
 
+        # Verificar permisos
+        await can_manage_files(request, proyecto_id, db)
+
         # Eliminar archivo físico
         if os.path.exists(archivo.ruta):
             os.remove(archivo.ruta)
@@ -115,50 +218,7 @@ async def eliminar_archivo(
             status_code=303
         )
     except Exception as e:
-        db.rollback()
         return RedirectResponse(
             url=f"/proyectos/{proyecto_id}/archivos?error={str(e)}",
-            status_code=303
-        )
-
-# Configuración - Tipos de Archivos
-@router.get("/configuracion/tipos-archivos")
-async def configuracion_tipos_archivos(request: Request, db: Session = Depends(get_db)):
-    tipos = db.query(TiposArchivos).all()
-    return templates.TemplateResponse(
-        "definiciones/tipos_archivos.html",
-        {
-            "request": request,
-            "tipos": tipos,
-            "mensaje_error": request.query_params.get("error"),
-            "mensaje_exito": request.query_params.get("exito")
-        }
-    )
-
-
-@router.post("/configuracion/tipos-archivos")
-async def crear_tipo_archivo(
-        nombre: str = Form(...),
-        db: Session = Depends(get_db)
-):
-    try:
-        tipo_existente = db.query(TiposArchivos).filter(TiposArchivos.nombre == nombre).first()
-        if tipo_existente:
-            return RedirectResponse(
-                url="/definiciones/tipos-archivos?error=Ya existe un tipo de archivo con ese nombre",
-                status_code=303
-            )
-
-        nuevo_tipo = TiposArchivos(nombre=nombre)
-        db.add(nuevo_tipo)
-        db.commit()
-        return RedirectResponse(
-            url="/definiciones/tipos-archivos?exito=Tipo de archivo creado exitosamente",
-            status_code=303
-        )
-    except Exception as e:
-        db.rollback()
-        return RedirectResponse(
-            url=f"/definiciones/tipos-archivos?error={str(e)}",
             status_code=303
         )

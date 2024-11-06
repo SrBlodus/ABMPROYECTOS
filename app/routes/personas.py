@@ -1,21 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Persona, Rol, Estado, Alumno, Profesor, Carrera
+from ..models import Persona, Rol, Estado, Alumno, Profesor, Carrera, Usuario
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from typing import Optional
+from .auth import get_current_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+# Función para verificar si el usuario es administrador
+async def verify_admin(
+        request: Request,
+        db: Session = Depends(get_db)
+) -> Optional[Usuario]:
+    user = await get_current_user(request, db)
+    if not user or user.rol_id != 1:  # Asumiendo que rol_id 1 es administrador
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+    return user
+
+
 @router.get("/personas")
-async def listar_personas(request: Request, db: Session = Depends(get_db)):
+async def listar_personas(
+        request: Request,
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(verify_admin)
+):
     personas = db.query(Persona).all()
     roles = db.query(Rol).all()
     estados = db.query(Estado).all()
-    carreras = db.query(Carrera).all()  # Para el select de carreras si es alumno
+    carreras = db.query(Carrera).all()
     return templates.TemplateResponse(
         "personas/index.html",
         {
@@ -23,13 +39,15 @@ async def listar_personas(request: Request, db: Session = Depends(get_db)):
             "personas": personas,
             "roles": roles,
             "estados": estados,
-            "carreras": carreras
+            "carreras": carreras,
+            "user": current_user
         }
     )
 
 
 @router.post("/personas")
 async def crear_persona(
+        request: Request,
         nombres: str = Form(...),
         apellidos: str = Form(...),
         rol_id: int = Form(...),
@@ -37,8 +55,9 @@ async def crear_persona(
         telefono: str = Form(...),
         correo: str = Form(...),
         matricula: str = Form(...),
-        carreras_id: Optional[int] = Form(None),  # Opcional, solo para alumnos
-        db: Session = Depends(get_db)
+        carreras_id: Optional[int] = Form(None),
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(verify_admin)
 ):
     try:
         # Crear la persona
@@ -51,9 +70,8 @@ async def crear_persona(
             correo=correo
         )
         db.add(nueva_persona)
-        db.flush()  # Para obtener el ID de la persona
+        db.flush()
 
-        # Según el rol, crear el registro correspondiente
         if rol_id == 2:  # Profesor
             nuevo_profesor = Profesor(
                 persona_id=nueva_persona.id,
@@ -62,7 +80,10 @@ async def crear_persona(
             db.add(nuevo_profesor)
         elif rol_id == 3:  # Alumno
             if not carreras_id:
-                raise HTTPException(status_code=400, detail="Se requiere una carrera para los alumnos")
+                return RedirectResponse(
+                    url="/personas?error=Se requiere una carrera para los alumnos",
+                    status_code=303
+                )
             nuevo_alumno = Alumno(
                 persona_id=nueva_persona.id,
                 matricula=matricula,
@@ -71,34 +92,44 @@ async def crear_persona(
             db.add(nuevo_alumno)
 
         db.commit()
-        return RedirectResponse(url="/personas", status_code=303)
+        return RedirectResponse(
+            url="/personas?exito=Persona creada exitosamente",
+            status_code=303
+        )
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        return RedirectResponse(
+            url=f"/personas?error={str(e)}",
+            status_code=303
+        )
 
 
 @router.get("/personas/{persona_id}")
-async def obtener_persona(request: Request, persona_id: int, db: Session = Depends(get_db)):
+async def obtener_persona(
+        request: Request,
+        persona_id: int,
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(verify_admin)
+):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
-        raise HTTPException(status_code=404, detail="Persona no encontrada")
+        return RedirectResponse(
+            url="/personas?error=Persona no encontrada",
+            status_code=303
+        )
 
     roles = db.query(Rol).all()
     estados = db.query(Estado).all()
     carreras = db.query(Carrera).all()
 
-    # Obtener matrícula según el rol
+    # Obtener matrícula y carrera si existe
     matricula = None
     carrera_id = None
-    if persona.rol_id == 2:  # Profesor
-        profesor = db.query(Profesor).filter(Profesor.persona_id == persona_id).first()
-        if profesor:
-            matricula = profesor.matricula
-    elif persona.rol_id == 3:  # Alumno
-        alumno = db.query(Alumno).filter(Alumno.persona_id == persona_id).first()
-        if alumno:
-            matricula = alumno.matricula
-            carrera_id = alumno.carreras_id
+    if persona.rol_id == 2 and persona.profesor:  # Profesor
+        matricula = persona.profesor[0].matricula if persona.profesor else None
+    elif persona.rol_id == 3 and persona.alumno:  # Alumno
+        matricula = persona.alumno[0].matricula if persona.alumno else None
+        carrera_id = persona.alumno[0].carreras_id if persona.alumno else None
 
     return templates.TemplateResponse(
         "personas/editar.html",
@@ -109,13 +140,15 @@ async def obtener_persona(request: Request, persona_id: int, db: Session = Depen
             "estados": estados,
             "carreras": carreras,
             "matricula": matricula,
-            "carrera_id": carrera_id
+            "carrera_id": carrera_id,
+            "user": current_user
         }
     )
 
 
 @router.post("/personas/{persona_id}/editar")
 async def editar_persona(
+        request: Request,
         persona_id: int,
         nombres: str = Form(...),
         apellidos: str = Form(...),
@@ -125,7 +158,8 @@ async def editar_persona(
         correo: str = Form(...),
         matricula: str = Form(...),
         carreras_id: Optional[int] = Form(None),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(verify_admin)
 ):
     try:
         persona = db.query(Persona).filter(Persona.id == persona_id).first()
@@ -135,7 +169,7 @@ async def editar_persona(
                 status_code=303
             )
 
-        # Actualizar datos básicos de la persona
+        # Actualizar datos básicos
         persona.nombres = nombres
         persona.apellidos = apellidos
         persona.rol_id = rol_id
@@ -143,12 +177,9 @@ async def editar_persona(
         persona.telefono = telefono
         persona.correo = correo
 
-        # Manejar el cambio de rol
-        # Si era profesor, eliminar registro de profesor
+        # Manejar cambios de rol
         if persona.profesor:
             db.delete(persona.profesor[0])
-
-        # Si era alumno, eliminar registro de alumno
         if persona.alumno:
             db.delete(persona.alumno[0])
 
@@ -173,7 +204,10 @@ async def editar_persona(
             db.add(nuevo_alumno)
 
         db.commit()
-        return RedirectResponse(url="/personas?exito=Persona actualizada exitosamente", status_code=303)
+        return RedirectResponse(
+            url="/personas?exito=Persona actualizada exitosamente",
+            status_code=303
+        )
     except Exception as e:
         db.rollback()
         return RedirectResponse(
@@ -182,49 +216,41 @@ async def editar_persona(
         )
 
 
-@router.get("/personas/{persona_id}")
-async def obtener_persona(request: Request, persona_id: int, db: Session = Depends(get_db)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
-    roles = db.query(Rol).all()
-    estados = db.query(Estado).all()
-    carreras = db.query(Carrera).all()
-
-    # Obtener matrícula y carrera si existe
-    matricula = None
-    carrera_id = None
-    if persona.rol_id == 2 and persona.profesor:  # Profesor
-        matricula = persona.profesor[0].matricula if persona.profesor else None
-    elif persona.rol_id == 3 and persona.alumno:  # Alumno
-        matricula = persona.alumno[0].matricula if persona.alumno else None
-        carrera_id = persona.alumno[0].carreras_id if persona.alumno else None
-
-    return templates.TemplateResponse(
-        "personas/editar.html",
-        {
-            "request": request,
-            "persona": persona,
-            "roles": roles,
-            "estados": estados,
-            "carreras": carreras,
-            "matricula": matricula,
-            "carrera_id": carrera_id
-        }
-    )
-
-
 @router.post("/personas/{persona_id}/eliminar")
-async def eliminar_persona(persona_id: int, db: Session = Depends(get_db)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
-    if not persona:
-        raise HTTPException(status_code=404, detail="Persona no encontrada")
-
+async def eliminar_persona(
+        request: Request,
+        persona_id: int,
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(verify_admin)
+):
     try:
+        persona = db.query(Persona).filter(Persona.id == persona_id).first()
+        if not persona:
+            return RedirectResponse(
+                url="/personas?error=Persona no encontrada",
+                status_code=303
+            )
+
+        # Verificar si la persona tiene un usuario asociado
+        if persona.usuario:
+            return RedirectResponse(
+                url="/personas?error=No se puede eliminar la persona porque tiene un usuario asociado",
+                status_code=303
+            )
+
         # Eliminar registros relacionados
         db.query(Profesor).filter(Profesor.persona_id == persona_id).delete()
         db.query(Alumno).filter(Alumno.persona_id == persona_id).delete()
         db.delete(persona)
         db.commit()
-        return RedirectResponse(url="/personas", status_code=303)
+
+        return RedirectResponse(
+            url="/personas?exito=Persona eliminada exitosamente",
+            status_code=303
+        )
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        return RedirectResponse(
+            url=f"/personas?error={str(e)}",
+            status_code=303
+        )

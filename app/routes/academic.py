@@ -1,18 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
-from ..models import Facultad, Carrera, Materia, Estado
+from ..models import Facultad, Carrera, Materia, Estado, Usuario
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
+from .auth import get_current_user
+from typing import Optional
+
+from ..models.models import profesor_materia, ProyectoXMateria
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+# Función para verificar si el usuario es administrador
+async def verify_admin(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> Optional[Usuario]:
+    user = await get_current_user(request, db)
+    if not user or user.rol_id != 1:  # Asumiendo que rol_id 1 es administrador
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+    return user
 
 # Rutas para Facultades
 @router.get("/facultades")
-async def listar_facultades(request: Request, db: Session = Depends(get_db)):
+async def listar_facultades(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
+):
     facultades = db.query(Facultad).options(joinedload(Facultad.carreras)).all()
     estados = db.query(Estado).all()
     return templates.TemplateResponse(
@@ -22,20 +39,21 @@ async def listar_facultades(request: Request, db: Session = Depends(get_db)):
             "facultades": facultades,
             "estados": estados,
             "mensaje_error": request.query_params.get("error"),
-            "mensaje_exito": request.query_params.get("exito")
+            "mensaje_exito": request.query_params.get("exito"),
+            "user": current_user
         }
     )
 
-
 @router.post("/facultades")
 async def crear_facultad(
-        codigo: str = Form(...),
-        nombre: str = Form(...),
-        estado_id: int = Form(...),
-        db: Session = Depends(get_db)
+    request: Request,
+    codigo: str = Form(...),
+    nombre: str = Form(...),
+    estado_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
-        # Verificar si el código ya existe
         facultad_existente = db.query(Facultad).filter(Facultad.codigo == codigo.upper()).first()
         if facultad_existente:
             return RedirectResponse(
@@ -61,21 +79,21 @@ async def crear_facultad(
             status_code=303
         )
 
-
 @router.post("/facultades/{facultad_id}/editar")
 async def editar_facultad(
-        facultad_id: int,
-        codigo: str = Form(...),
-        nombre: str = Form(...),
-        estado_id: int = Form(...),
-        db: Session = Depends(get_db)
+    request: Request,
+    facultad_id: int,
+    codigo: str = Form(...),
+    nombre: str = Form(...),
+    estado_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
         facultad = db.query(Facultad).filter(Facultad.id == facultad_id).first()
         if not facultad:
             raise HTTPException(status_code=404, detail="Facultad no encontrada")
 
-        # Verificar si el código ya existe (excluyendo la facultad actual)
         facultad_existente = db.query(Facultad).filter(
             Facultad.codigo == codigo.upper(),
             Facultad.id != facultad_id
@@ -101,10 +119,13 @@ async def editar_facultad(
             status_code=303
         )
 
-
-# Rutas para Carreras
 @router.get("/facultades/{facultad_id}/carreras")
-async def listar_carreras(request: Request, facultad_id: int, db: Session = Depends(get_db)):
+async def listar_carreras(
+    request: Request,
+    facultad_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
+):
     facultad = db.query(Facultad).filter(Facultad.id == facultad_id).first()
     if not facultad:
         raise HTTPException(status_code=404, detail="Facultad no encontrada")
@@ -119,21 +140,22 @@ async def listar_carreras(request: Request, facultad_id: int, db: Session = Depe
             "carreras": carreras,
             "estados": estados,
             "mensaje_error": request.query_params.get("error"),
-            "mensaje_exito": request.query_params.get("exito")
+            "mensaje_exito": request.query_params.get("exito"),
+            "user": current_user
         }
     )
 
-
 @router.post("/facultades/{facultad_id}/carreras")
 async def crear_carrera(
-        facultad_id: int,
-        codigo: str = Form(...),
-        nombre: str = Form(...),
-        estado_id: int = Form(...),
-        db: Session = Depends(get_db)
+    request: Request,
+    facultad_id: int,
+    codigo: str = Form(...),
+    nombre: str = Form(...),
+    estado_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
-        # Verificar si el código ya existe
         carrera_existente = db.query(Carrera).filter(Carrera.codigo == codigo.upper()).first()
         if carrera_existente:
             return RedirectResponse(
@@ -160,21 +182,21 @@ async def crear_carrera(
             status_code=303
         )
 
-
 @router.post("/carreras/{carrera_id}/editar")
 async def editar_carrera(
-        carrera_id: int,
-        codigo: str = Form(...),
-        nombre: str = Form(...),
-        estado_id: int = Form(...),
-        db: Session = Depends(get_db)
+    request: Request,
+    carrera_id: int,
+    codigo: str = Form(...),
+    nombre: str = Form(...),
+    estado_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
         carrera = db.query(Carrera).filter(Carrera.id == carrera_id).first()
         if not carrera:
             raise HTTPException(status_code=404, detail="Carrera no encontrada")
 
-        # Verificar si el código ya existe (excluyendo la carrera actual)
         carrera_existente = db.query(Carrera).filter(
             Carrera.codigo == codigo.upper(),
             Carrera.id != carrera_id
@@ -200,16 +222,19 @@ async def editar_carrera(
             status_code=303
         )
 
-
 @router.post("/carreras/{carrera_id}/eliminar")
-async def eliminar_carrera(carrera_id: int, db: Session = Depends(get_db)):
+async def eliminar_carrera(
+    request: Request,
+    carrera_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
+):
     carrera = db.query(Carrera).filter(Carrera.id == carrera_id).first()
     if not carrera:
         raise HTTPException(status_code=404, detail="Carrera no encontrada")
 
     facultad_id = carrera.facultades_id
     try:
-        # Verificar si hay materias asociadas
         materias = db.query(Materia).filter(Materia.carreras_id == carrera_id).first()
         if materias:
             return RedirectResponse(
@@ -230,10 +255,13 @@ async def eliminar_carrera(carrera_id: int, db: Session = Depends(get_db)):
             status_code=303
         )
 
-
-# Rutas para Materias
 @router.get("/carreras/{carrera_id}/materias")
-async def listar_materias(request: Request, carrera_id: int, db: Session = Depends(get_db)):
+async def listar_materias(
+    request: Request,
+    carrera_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
+):
     carrera = db.query(Carrera).filter(Carrera.id == carrera_id).first()
     if not carrera:
         raise HTTPException(status_code=404, detail="Carrera no encontrada")
@@ -248,22 +276,23 @@ async def listar_materias(request: Request, carrera_id: int, db: Session = Depen
             "materias": materias,
             "estados": estados,
             "mensaje_error": request.query_params.get("error"),
-            "mensaje_exito": request.query_params.get("exito")
+            "mensaje_exito": request.query_params.get("exito"),
+            "user": current_user
         }
     )
 
-
 @router.post("/carreras/{carrera_id}/materias")
 async def crear_materia(
-        carrera_id: int,
-        codigo: str = Form(...),
-        nombre: str = Form(...),
-        curso: int = Form(...),
-        estado_id: int = Form(...),
-        db: Session = Depends(get_db)
+    request: Request,
+    carrera_id: int,
+    codigo: str = Form(...),
+    nombre: str = Form(...),
+    curso: int = Form(...),
+    estado_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
-        # Verificar si el código ya existe
         materia_existente = db.query(Materia).filter(Materia.codigo == codigo.upper()).first()
         if materia_existente:
             return RedirectResponse(
@@ -291,22 +320,22 @@ async def crear_materia(
             status_code=303
         )
 
-
 @router.post("/materias/{materia_id}/editar")
 async def editar_materia(
-        materia_id: int,
-        codigo: str = Form(...),
-        nombre: str = Form(...),
-        curso: int = Form(...),
-        estado_id: int = Form(...),
-        db: Session = Depends(get_db)
+    request: Request,
+    materia_id: int,
+    codigo: str = Form(...),
+    nombre: str = Form(...),
+    curso: int = Form(...),
+    estado_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
         materia = db.query(Materia).filter(Materia.id == materia_id).first()
         if not materia:
             raise HTTPException(status_code=404, detail="Materia no encontrada")
 
-        # Verificar si el código ya existe (excluyendo la materia actual)
         materia_existente = db.query(Materia).filter(
             Materia.codigo == codigo.upper(),
             Materia.id != materia_id
@@ -335,14 +364,41 @@ async def editar_materia(
 
 
 @router.post("/materias/{materia_id}/eliminar")
-async def eliminar_materia(materia_id: int, db: Session = Depends(get_db)):
-    materia = db.query(Materia).filter(Materia.id == materia_id).first()
-    if not materia:
-        raise HTTPException(status_code=404, detail="Materia no encontrada")
-
-    carrera_id = materia.carreras_id
+async def eliminar_materia(
+        request: Request,
+        materia_id: int,
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(verify_admin)
+):
     try:
-        # Aquí podrías agregar verificaciones adicionales si es necesario
+        materia = db.query(Materia).filter(Materia.id == materia_id).first()
+        if not materia:
+            raise HTTPException(status_code=404, detail="Materia no encontrada")
+
+        carrera_id = materia.carreras_id
+
+        # Verificar si hay proyectos asociados a esta materia
+        proyectos = db.query(ProyectoXMateria).filter(
+            ProyectoXMateria.materias_id == materia_id
+        ).first()
+
+        if proyectos:
+            return RedirectResponse(
+                url=f"/carreras/{carrera_id}/materias?error=No se puede eliminar la materia porque tiene proyectos asociados",
+                status_code=303
+            )
+
+        # Verificar si hay profesores asignados a esta materia
+        profesores = db.query(profesor_materia).filter(
+            profesor_materia.c.materia_id == materia_id
+        ).first()
+
+        if profesores:
+            return RedirectResponse(
+                url=f"/carreras/{carrera_id}/materias?error=No se puede eliminar la materia porque tiene profesores asignados",
+                status_code=303
+            )
+
         db.delete(materia)
         db.commit()
         return RedirectResponse(
@@ -355,15 +411,26 @@ async def eliminar_materia(materia_id: int, db: Session = Depends(get_db)):
             url=f"/carreras/{carrera_id}/materias?error={str(e)}",
             status_code=303
         )
-
-
 @router.post("/facultades/{facultad_id}/eliminar")
-async def eliminar_facultad(facultad_id: int, db: Session = Depends(get_db)):
+async def eliminar_facultad(
+    request: Request,
+    facultad_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
+):
     try:
         facultad = db.query(Facultad).filter(Facultad.id == facultad_id).first()
         if not facultad:
             return RedirectResponse(
                 url="/facultades?error=Facultad no encontrada",
+                status_code=303
+            )
+
+        # Verificar si hay carreras asociadas
+        carreras = db.query(Carrera).filter(Carrera.facultades_id == facultad_id).first()
+        if carreras:
+            return RedirectResponse(
+                url="/facultades?error=No se puede eliminar la facultad porque tiene carreras asociadas",
                 status_code=303
             )
 

@@ -11,8 +11,7 @@ def init_db():
         # Crear estados básicos si no existen
         estados = [
             {"id": 1, "nombre": "Activo"},
-            {"id": 2, "nombre": "Inactivo"},
-            {"id": 3, "nombre": "Reiniciar"}
+            {"id": 2, "nombre": "Inactivo"}
         ]
 
         for estado in estados:
