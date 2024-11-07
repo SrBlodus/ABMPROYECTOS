@@ -60,6 +60,13 @@ async def get_user_permissions(user: Usuario, proyecto_id: int, db: Session) -> 
 
     return permissions
 
+def set_audit_user(db: Session, user_id: int):
+    try:
+        db.execute(text("SET @user_id = :user_id"), {"user_id": user_id})
+    except Exception as e:
+        print(f"Error al establecer usuario de auditoría: {str(e)}")
+
+
 
 @router.get("/proyectos")
 async def listar_proyectos(

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from ..models import Estado, Rol, Persona, Usuario
 from ..database import get_db
 import bcrypt
+from .initialize_triggers import init_triggers
 
 
 def init_db():
@@ -61,6 +62,9 @@ def init_db():
 
         db.commit()
         print("Base de datos inicializada correctamente")
+
+        # Inicializar triggers
+        init_triggers()
 
     except Exception as e:
         print(f"Error inicializando la base de datos: {str(e)}")
