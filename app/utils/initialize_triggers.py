@@ -213,7 +213,7 @@ def init_triggers():
 
             conn.commit()
 
-        print("Triggers de auditoría inicializados correctamente")
+        print("Triggers de auditoría para gestion acedemica inicializados correctamente")
 
     except Exception as e:
         print(f"Error inicializando la base de datos: {str(e)}")

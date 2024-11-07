@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse
 from typing import List, Optional
 from datetime import datetime
 from .auth import get_current_user
+from sqlalchemy import text
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -65,7 +66,6 @@ def set_audit_user(db: Session, user_id: int):
         db.execute(text("SET @user_id = :user_id"), {"user_id": user_id})
     except Exception as e:
         print(f"Error al establecer usuario de auditoría: {str(e)}")
-
 
 
 @router.get("/proyectos")
@@ -330,9 +330,9 @@ async def editar_proyecto_form(
 
 @router.post("/proyectos/{proyecto_id}/editar")
 async def editar_proyecto(
-        request: Request,
-        proyecto_id: int,
-        db: Session = Depends(get_db)
+    request: Request,
+    proyecto_id: int,
+    db: Session = Depends(get_db)
 ):
     try:
         user = await get_current_user(request, db)
@@ -346,6 +346,9 @@ async def editar_proyecto(
                 status_code=303
             )
 
+        # Establecer usuario para auditoría
+        set_audit_user(db, user.id)
+
         form = await request.form()
         proyecto = db.query(Proyecto).filter(Proyecto.id == proyecto_id).first()
 
@@ -355,20 +358,19 @@ async def editar_proyecto(
                 status_code=303
             )
 
-        # Actualizar datos básicos (permitido para profesores y alumnos vinculados)
+        # Actualizar datos básicos
         proyecto.nombre = form.get("nombre")
         proyecto.descripcion = form.get("descripcion")
         proyecto.estado_id = int(form.get("estado_id"))
 
         # Solo los profesores pueden actualizar materias y alumnos
         if user.rol_id == 2:
-            # Verificar que sea el profesor del proyecto
             profesor = db.query(Profesor).filter(
                 Profesor.persona_id == user.persona_id
             ).first()
 
             if profesor and profesor.id == proyecto.profesor_id:
-                # Actualizar materias
+                # Actualizar materias (se auditará por los triggers)
                 db.query(ProyectoXMateria).filter(
                     ProyectoXMateria.proyecto_id == proyecto_id
                 ).delete()
@@ -382,7 +384,7 @@ async def editar_proyecto(
                     )
                     db.add(proyecto_materia)
 
-                # Actualizar alumnos
+                # Actualizar alumnos (se auditará por los triggers)
                 db.query(AlumnosXProyecto).filter(
                     AlumnosXProyecto.proyecto_id == proyecto_id
                 ).delete()
@@ -410,9 +412,9 @@ async def editar_proyecto(
 
 @router.post("/proyectos/{proyecto_id}/eliminar")
 async def eliminar_proyecto(
-        request: Request,
-        proyecto_id: int,
-        db: Session = Depends(get_db)
+    request: Request,
+    proyecto_id: int,
+    db: Session = Depends(get_db)
 ):
     try:
         user = await get_current_user(request, db)
@@ -426,6 +428,9 @@ async def eliminar_proyecto(
                 status_code=303
             )
 
+        # Establecer usuario para auditoría
+        set_audit_user(db, user.id)
+
         proyecto = db.query(Proyecto).filter(Proyecto.id == proyecto_id).first()
         if not proyecto:
             return RedirectResponse(
@@ -433,7 +438,7 @@ async def eliminar_proyecto(
                 status_code=303
             )
 
-        # Eliminar relaciones
+        # Las eliminaciones serán auditadas por los triggers
         db.query(ProyectoXMateria).filter(
             ProyectoXMateria.proyecto_id == proyecto_id
         ).delete()
