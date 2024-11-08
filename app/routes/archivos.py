@@ -12,6 +12,7 @@ import os
 import shutil
 from typing import Optional
 from datetime import datetime
+from sqlalchemy import text
 
 router = APIRouter(
     prefix="/proyectos/{proyecto_id}/archivos",
@@ -61,6 +62,15 @@ async def can_manage_files(
     )
 
 
+def set_audit_user(db: Session, user_id: int):
+    try:
+        db.execute(text("SET @user_id = :user_id"), {"user_id": user_id})
+    except Exception as e:
+        print(f"Error al establecer usuario de auditoría: {str(e)}")
+
+
+
+
 @router.get("")
 async def ver_archivos(
         request: Request,
@@ -108,13 +118,16 @@ async def ver_archivos(
 
 @router.post("/subir")
 async def subir_archivo(
-        proyecto_id: int,
-        archivo: UploadFile = File(...),
-        tipo_archivo_id: int = Form(...),
-        db: Session = Depends(get_db),
-        current_user: Usuario = Depends(can_manage_files)
+    proyecto_id: int,
+    archivo: UploadFile = File(...),
+    tipo_archivo_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(can_manage_files)
 ):
     try:
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
         # Verificar el tipo de archivo
         tipo_archivo = db.query(TiposArchivos).filter(TiposArchivos.id == tipo_archivo_id).first()
         if not tipo_archivo:
@@ -133,7 +146,7 @@ async def subir_archivo(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(archivo.file, buffer)
 
-        # Crear registro en la base de datos
+        # Crear registro en la base de datos (será auditado por el trigger)
         nuevo_archivo = ArchivosXProyecto(
             proyecto_id=proyecto_id,
             tipos_archivos_id=tipo_archivo_id,
@@ -147,6 +160,8 @@ async def subir_archivo(
             status_code=303
         )
     except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return RedirectResponse(
             url=f"/proyectos/{proyecto_id}/archivos?error={str(e)}",
             status_code=303
@@ -202,22 +217,29 @@ async def eliminar_archivo(
                 status_code=303
             )
 
-        # Verificar permisos
-        await can_manage_files(request, proyecto_id, db)
+        # Verificar permisos y obtener usuario
+        current_user = await can_manage_files(request, proyecto_id, db)
 
-        # Eliminar archivo físico
-        if os.path.exists(archivo.ruta):
-            os.remove(archivo.ruta)
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
 
-        # Eliminar registro de la base de datos
+        # Guardar ruta antes de eliminar
+        ruta_archivo = archivo.ruta
+
+        # Eliminar registro de la base de datos (será auditado por el trigger)
         db.delete(archivo)
         db.commit()
+
+        # Eliminar archivo físico después del commit
+        if os.path.exists(ruta_archivo):
+            os.remove(ruta_archivo)
 
         return RedirectResponse(
             url=f"/proyectos/{proyecto_id}/archivos?exito=Archivo eliminado exitosamente",
             status_code=303
         )
     except Exception as e:
+        db.rollback()
         return RedirectResponse(
             url=f"/proyectos/{proyecto_id}/archivos?error={str(e)}",
             status_code=303

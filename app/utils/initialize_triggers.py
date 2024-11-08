@@ -419,3 +419,82 @@ def init_triggers():
 
     except Exception as e:
         print(f"Error inicializando triggers de proyectos: {str(e)}")
+
+    try:
+        triggers = [
+            # Trigger para INSERT de archivos
+            """
+            DROP TRIGGER IF EXISTS tr_archivos_x_proyecto_insert
+            """,
+            """
+            CREATE TRIGGER tr_archivos_x_proyecto_insert
+            AFTER INSERT ON archivos_x_proyecto
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'archivos_x_proyecto',
+                    NEW.id,
+                    JSON_OBJECT(),
+                    JSON_OBJECT(
+                        'proyecto_id', NEW.proyecto_id,
+                        'tipos_archivos_id', NEW.tipos_archivos_id,
+                        'ruta', NEW.ruta
+                    ),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para DELETE de archivos
+            """
+            DROP TRIGGER IF EXISTS tr_archivos_x_proyecto_delete
+            """,
+            """
+            CREATE TRIGGER tr_archivos_x_proyecto_delete
+            BEFORE DELETE ON archivos_x_proyecto
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'archivos_x_proyecto',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'proyecto_id', OLD.proyecto_id,
+                        'tipos_archivos_id', OLD.tipos_archivos_id,
+                        'ruta', OLD.ruta
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """
+        ]
+
+        # Ejecutar cada trigger
+        with engine.connect() as conn:
+            conn.execute(text("SET @user_id = 0"))
+
+            for trigger in triggers:
+                if trigger.strip():
+                    conn.execute(text(trigger))
+
+            conn.commit()
+
+        print("Triggers de auditoría para archivos inicializados correctamente")
+
+    except Exception as e:
+        print(f"Error inicializando triggers de archivos: {str(e)}")
