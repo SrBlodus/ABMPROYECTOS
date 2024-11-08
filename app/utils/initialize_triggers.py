@@ -498,3 +498,397 @@ def init_triggers():
 
     except Exception as e:
         print(f"Error inicializando triggers de archivos: {str(e)}")
+
+    try:
+        triggers = [
+            # Trigger para UPDATE de usuarios
+            """
+            DROP TRIGGER IF EXISTS tr_usuarios_update
+            """,
+            """
+            CREATE TRIGGER tr_usuarios_update 
+            AFTER UPDATE ON usuarios
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'usuarios',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'usuario', OLD.usuario,
+                        'rol_id', OLD.rol_id,
+                        'persona_id', OLD.persona_id,
+                        'estado_id', OLD.estado_id
+                    ),
+                    JSON_OBJECT(
+                        'usuario', NEW.usuario,
+                        'rol_id', NEW.rol_id,
+                        'persona_id', NEW.persona_id,
+                        'estado_id', NEW.estado_id
+                    ),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para DELETE de usuarios (aunque usamos soft delete)
+            """
+            DROP TRIGGER IF EXISTS tr_usuarios_delete
+            """,
+            """
+            CREATE TRIGGER tr_usuarios_delete
+            BEFORE DELETE ON usuarios
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'usuarios',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'usuario', OLD.usuario,
+                        'rol_id', OLD.rol_id,
+                        'persona_id', OLD.persona_id,
+                        'estado_id', OLD.estado_id
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """
+        ]
+
+        # Ejecutar cada trigger
+        with engine.connect() as conn:
+            conn.execute(text("SET @user_id = 0"))
+
+            for trigger in triggers:
+                if trigger.strip():
+                    conn.execute(text(trigger))
+
+            conn.commit()
+
+        print("Triggers de auditoría para usuarios inicializados correctamente")
+
+    except Exception as e:
+        print(f"Error inicializando triggers de usuarios: {str(e)}")
+
+    try:
+        triggers = [
+            # Trigger para persona UPDATE
+            """
+            DROP TRIGGER IF EXISTS tr_persona_update
+            """,
+            """
+            CREATE TRIGGER tr_persona_update 
+            AFTER UPDATE ON persona
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'persona',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'nombres', OLD.nombres,
+                        'apellidos', OLD.apellidos,
+                        'rol_id', OLD.rol_id,
+                        'estado_id', OLD.estado_id,
+                        'telefono', OLD.telefono,
+                        'correo', OLD.correo
+                    ),
+                    JSON_OBJECT(
+                        'nombres', NEW.nombres,
+                        'apellidos', NEW.apellidos,
+                        'rol_id', NEW.rol_id,
+                        'estado_id', NEW.estado_id,
+                        'telefono', NEW.telefono,
+                        'correo', NEW.correo
+                    ),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para persona DELETE
+            """
+            DROP TRIGGER IF EXISTS tr_persona_delete
+            """,
+            """
+            CREATE TRIGGER tr_persona_delete
+            BEFORE DELETE ON persona
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'persona',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'nombres', OLD.nombres,
+                        'apellidos', OLD.apellidos,
+                        'rol_id', OLD.rol_id,
+                        'estado_id', OLD.estado_id,
+                        'telefono', OLD.telefono,
+                        'correo', OLD.correo
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para profesor DELETE
+            """
+            DROP TRIGGER IF EXISTS tr_profesor_delete
+            """,
+            """
+            CREATE TRIGGER tr_profesor_delete
+            BEFORE DELETE ON profesores
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'profesores',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'persona_id', OLD.persona_id,
+                        'matricula', OLD.matricula
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para alumno DELETE
+            """
+            DROP TRIGGER IF EXISTS tr_alumno_delete
+            """,
+            """
+            CREATE TRIGGER tr_alumno_delete
+            BEFORE DELETE ON alumnos
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'alumnos',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'persona_id', OLD.persona_id,
+                        'matricula', OLD.matricula,
+                        'carreras_id', OLD.carreras_id
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """
+        ]
+
+        # Ejecutar cada trigger
+        with engine.connect() as conn:
+            conn.execute(text("SET @user_id = 0"))
+
+            for trigger in triggers:
+                if trigger.strip():
+                    conn.execute(text(trigger))
+
+            conn.commit()
+
+        print("Triggers de auditoría para personas inicializados correctamente")
+
+    except Exception as e:
+        print(f"Error inicializando triggers de personas: {str(e)}")
+
+    try:
+        triggers = [
+            # Trigger para INSERT en profesor_materia
+            """
+            DROP TRIGGER IF EXISTS tr_profesor_materia_insert
+            """,
+            """
+            CREATE TRIGGER tr_profesor_materia_insert
+            AFTER INSERT ON profesor_materia
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'profesor_materia',
+                    NEW.profesor_id,
+                    JSON_OBJECT(),
+                    JSON_OBJECT(
+                        'profesor_id', NEW.profesor_id,
+                        'materia_id', NEW.materia_id,
+                        'accion', 'asignación'
+                    ),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para DELETE en profesor_materia
+            """
+            DROP TRIGGER IF EXISTS tr_profesor_materia_delete
+            """,
+            """
+            CREATE TRIGGER tr_profesor_materia_delete
+            BEFORE DELETE ON profesor_materia
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'profesor_materia',
+                    OLD.profesor_id,
+                    JSON_OBJECT(
+                        'profesor_id', OLD.profesor_id,
+                        'materia_id', OLD.materia_id,
+                        'accion', 'desvinculación'
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """
+        ]
+
+        # Ejecutar cada trigger
+        with engine.connect() as conn:
+            conn.execute(text("SET @user_id = 0"))
+
+            for trigger in triggers:
+                if trigger.strip():
+                    conn.execute(text(trigger))
+
+            conn.commit()
+
+        print("Triggers de auditoría para asignación de materias inicializados correctamente")
+
+    except Exception as e:
+        print(f"Error inicializando triggers de asignación de materias: {str(e)}")
+
+    try:
+        triggers = [
+            # Trigger para UPDATE en tipos_archivos
+            """
+            DROP TRIGGER IF EXISTS tr_tipos_archivos_update
+            """,
+            """
+            CREATE TRIGGER tr_tipos_archivos_update 
+            AFTER UPDATE ON tipos_archivos
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'tipos_archivos',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'nombre', OLD.nombre
+                    ),
+                    JSON_OBJECT(
+                        'nombre', NEW.nombre
+                    ),
+                    NOW()
+                );
+            END
+            """,
+            # Trigger para DELETE en tipos_archivos
+            """
+            DROP TRIGGER IF EXISTS tr_tipos_archivos_delete
+            """,
+            """
+            CREATE TRIGGER tr_tipos_archivos_delete
+            BEFORE DELETE ON tipos_archivos
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO auditoria (
+                    usuario,
+                    tabla,
+                    id_registro,
+                    valor_anterior,
+                    valor_nuevo,
+                    fecha
+                ) VALUES (
+                    @user_id,
+                    'tipos_archivos',
+                    OLD.id,
+                    JSON_OBJECT(
+                        'nombre', OLD.nombre,
+                        'accion', 'eliminación'
+                    ),
+                    JSON_OBJECT(),
+                    NOW()
+                );
+            END
+            """
+        ]
+
+        # Ejecutar cada trigger
+        with engine.connect() as conn:
+            conn.execute(text("SET @user_id = 0"))
+
+            for trigger in triggers:
+                if trigger.strip():
+                    conn.execute(text(trigger))
+
+            conn.commit()
+
+        print("Triggers de auditoría para tipos de archivos inicializados correctamente")
+
+    except Exception as e:
+        print(f"Error inicializando triggers de tipos de archivos: {str(e)}")

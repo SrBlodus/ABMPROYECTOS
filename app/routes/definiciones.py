@@ -6,6 +6,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from .auth import get_current_user
 from typing import Optional
+from sqlalchemy import text
+
 
 router = APIRouter(prefix="/definiciones")
 templates = Jinja2Templates(directory="app/templates")
@@ -35,6 +37,12 @@ async def index_definiciones(
             "user": current_user
         }
     )
+
+def set_audit_user(db: Session, user_id: int):
+    try:
+        db.execute(text("SET @user_id = :user_id"), {"user_id": user_id})
+    except Exception as e:
+        print(f"Error al establecer usuario de auditoría: {str(e)}")
 
 
 @router.get("/tipos-archivos")
@@ -94,16 +102,18 @@ async def crear_tipo_archivo(
             status_code=303
         )
 
-
 @router.post("/tipos-archivos/{tipo_id}/editar")
 async def editar_tipo_archivo(
-        request: Request,
-        tipo_id: int,
-        nombre: str = Form(...),
-        db: Session = Depends(get_db),
-        current_user: Usuario = Depends(verify_admin)
+    request: Request,
+    tipo_id: int,
+    nombre: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
         # Verificar si existe
         tipo = db.query(TiposArchivos).filter(TiposArchivos.id == tipo_id).first()
         if not tipo:
@@ -123,7 +133,7 @@ async def editar_tipo_archivo(
                 status_code=303
             )
 
-        # Actualizar y guardar
+        # Actualizar y guardar (será auditado por el trigger)
         tipo.nombre = nombre
         db.commit()
 
@@ -138,15 +148,17 @@ async def editar_tipo_archivo(
             status_code=303
         )
 
-
 @router.post("/tipos-archivos/{tipo_id}/eliminar")
 async def eliminar_tipo_archivo(
-        request: Request,
-        tipo_id: int,
-        db: Session = Depends(get_db),
-        current_user: Usuario = Depends(verify_admin)
+    request: Request,
+    tipo_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
         tipo = db.query(TiposArchivos).filter(TiposArchivos.id == tipo_id).first()
         if not tipo:
             return RedirectResponse(
@@ -161,6 +173,7 @@ async def eliminar_tipo_archivo(
                 status_code=303
             )
 
+        # Eliminar (será auditado por el trigger)
         db.delete(tipo)
         db.commit()
 

@@ -112,8 +112,8 @@ async def listar_proyectos(
 
 @router.get("/proyectos/nuevo")
 async def nuevo_proyecto_form(
-        request: Request,
-        db: Session = Depends(get_db)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     try:
         user = await get_current_user(request, db)
@@ -122,12 +122,6 @@ async def nuevo_proyecto_form(
                 url="/proyectos?error=Solo los profesores pueden crear proyectos",
                 status_code=303
             )
-
-        estados = db.query(Estado).all()
-        materias = db.query(Materia).filter(Materia.estado_id == 1).all()
-        alumnos = db.query(Alumno).join(Alumno.persona).filter(
-            Alumno.persona.has(estado_id=1)
-        ).all()
 
         # Obtener el profesor actual
         profesor = db.query(Profesor).filter(
@@ -139,6 +133,12 @@ async def nuevo_proyecto_form(
                 url="/proyectos?error=No se encontró el registro de profesor",
                 status_code=303
             )
+
+        estados = db.query(Estado).all()
+        materias = db.query(Materia).filter(Materia.estado_id == 1).all()
+        alumnos = db.query(Alumno).join(Alumno.persona).filter(
+            Alumno.persona.has(estado_id=1)
+        ).all()
 
         return templates.TemplateResponse(
             "proyectos/crear.html",

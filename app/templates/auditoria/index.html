@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Logs de Auditoría - Sistema de Gestión Académica{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Logs de Auditoría</h1>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="tabla" class="form-label">Tabla</label>
+                    <select class="form-select" id="tabla" name="tabla">
+                        <option value="">Todas las tablas</option>
+                        {% for tabla in tablas %}
+                        <option value="{{ tabla }}" {% if tabla == tabla_seleccionada %}selected{% endif %}>
+                            {{ tabla }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_desde" class="form-label">Desde</label>
+                    <input type="date" class="form-control" id="fecha_desde" name="fecha_desde"
+                           value="{{ fecha_desde }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_hasta" class="form-label">Hasta</label>
+                    <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta"
+                           value="{{ fecha_hasta }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search me-2"></i>Filtrar
+                    </button>
+                    <a href="/auditoria" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de resultados -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Tabla</th>
+                            <th>ID Registro</th>
+                            <th>Valor Anterior</th>
+                            <th>Valor Nuevo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros %}
+                        <tr>
+                            <td>{{ registro.fecha.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ registro.usuario }}</td>
+                            <td>{{ registro.tabla }}</td>
+                            <td>{{ registro.id_registro }}</td>
+                            <td>
+                                <pre class="mb-0"><code>{{ registro.valor_anterior }}</code></pre>
+                            </td>
+                            <td>
+                                <pre class="mb-0"><code>{{ registro.valor_nuevo }}</code></pre>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not registros %}
+                        <tr>
+                            <td colspan="6" class="text-center">No hay registros de auditoría para mostrar</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block nav_active %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const auditoriaLink = document.querySelector('a[href="/auditoria"]');
+    if (auditoriaLink) {
+        auditoriaLink.classList.remove('text-white');
+        auditoriaLink.classList.add('active');
+    }
+});
+</script>
+{% endblock %}

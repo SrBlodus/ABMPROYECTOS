@@ -7,6 +7,8 @@ from fastapi.responses import RedirectResponse
 from .auth import get_current_user
 import bcrypt
 from typing import Optional
+from sqlalchemy import text
+
 
 router = APIRouter(
     prefix="/usuarios",
@@ -28,6 +30,14 @@ async def verify_admin(
 def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode(), salt).decode()
+
+def set_audit_user(db: Session, user_id: int):
+    try:
+        db.execute(text("SET @user_id = :user_id"), {"user_id": user_id})
+    except Exception as e:
+        print(f"Error al establecer usuario de auditoría: {str(e)}")
+
+
 
 @router.get("")
 async def listar_usuarios(
@@ -221,6 +231,10 @@ async def editar_usuario(
                 db.query(Usuario).filter(Usuario.usuario == form.get("usuario")).first()):
             raise HTTPException(status_code=400, detail="Este nombre de usuario ya existe")
 
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
+        # Actualizar datos (será auditado por el trigger)
         db_usuario.usuario = form.get("usuario")
         if form.get("password"):
             db_usuario.password = get_password_hash(form.get("password"))
@@ -267,7 +281,10 @@ async def eliminar_usuario(
                 status_code=303
             )
 
-        # En lugar de eliminar, actualizamos el estado a inactivo
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
+        # Actualizar estado (será auditado por el trigger UPDATE)
         usuario.estado_id = 2
         db.commit()
 

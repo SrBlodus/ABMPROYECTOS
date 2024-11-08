@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from typing import Optional
 from .auth import get_current_user
+from sqlalchemy import text
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -21,6 +22,11 @@ async def verify_admin(
         raise HTTPException(status_code=403, detail="Acceso no autorizado")
     return user
 
+def set_audit_user(db: Session, user_id: int):
+    try:
+        db.execute(text("SET @user_id = :user_id"), {"user_id": user_id})
+    except Exception as e:
+        print(f"Error al establecer usuario de auditoría: {str(e)}")
 
 @router.get("/personas")
 async def listar_personas(
@@ -148,20 +154,23 @@ async def obtener_persona(
 
 @router.post("/personas/{persona_id}/editar")
 async def editar_persona(
-        request: Request,
-        persona_id: int,
-        nombres: str = Form(...),
-        apellidos: str = Form(...),
-        rol_id: int = Form(...),
-        estado_id: int = Form(...),
-        telefono: str = Form(...),
-        correo: str = Form(...),
-        matricula: str = Form(...),
-        carreras_id: Optional[int] = Form(None),
-        db: Session = Depends(get_db),
-        current_user: Usuario = Depends(verify_admin)
+    request: Request,
+    persona_id: int,
+    nombres: str = Form(...),
+    apellidos: str = Form(...),
+    rol_id: int = Form(...),
+    estado_id: int = Form(...),
+    telefono: str = Form(...),
+    correo: str = Form(...),
+    matricula: str = Form(...),
+    carreras_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
         persona = db.query(Persona).filter(Persona.id == persona_id).first()
         if not persona:
             return RedirectResponse(
@@ -169,7 +178,7 @@ async def editar_persona(
                 status_code=303
             )
 
-        # Actualizar datos básicos
+        # Actualizar datos básicos (será auditado por el trigger)
         persona.nombres = nombres
         persona.apellidos = apellidos
         persona.rol_id = rol_id
@@ -177,7 +186,7 @@ async def editar_persona(
         persona.telefono = telefono
         persona.correo = correo
 
-        # Manejar cambios de rol
+        # Manejar cambios de rol (será auditado por los triggers de DELETE)
         if persona.profesor:
             db.delete(persona.profesor[0])
         if persona.alumno:
@@ -218,12 +227,15 @@ async def editar_persona(
 
 @router.post("/personas/{persona_id}/eliminar")
 async def eliminar_persona(
-        request: Request,
-        persona_id: int,
-        db: Session = Depends(get_db),
-        current_user: Usuario = Depends(verify_admin)
+    request: Request,
+    persona_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_admin)
 ):
     try:
+        # Establecer usuario para auditoría
+        set_audit_user(db, current_user.id)
+
         persona = db.query(Persona).filter(Persona.id == persona_id).first()
         if not persona:
             return RedirectResponse(
@@ -238,7 +250,7 @@ async def eliminar_persona(
                 status_code=303
             )
 
-        # Eliminar registros relacionados
+        # Eliminar registros relacionados (serán auditados por los triggers)
         db.query(Profesor).filter(Profesor.persona_id == persona_id).delete()
         db.query(Alumno).filter(Alumno.persona_id == persona_id).delete()
         db.delete(persona)

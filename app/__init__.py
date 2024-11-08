@@ -67,7 +67,8 @@ from .routes import (
     definiciones_router,
     profesor_materias_router,
     usuarios_router,
-    auth_router
+    auth_router,
+    auditoria_router
 )
 
 # Incluir routers
@@ -79,6 +80,7 @@ app.include_router(archivos_router)
 app.include_router(definiciones_router)
 app.include_router(profesor_materias_router)
 app.include_router(usuarios_router)
+app.include_router(auditoria_router)
 
 
 # Ruta principal que redirecciona al dashboard

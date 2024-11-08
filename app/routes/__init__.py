@@ -6,6 +6,7 @@ from .definiciones import router as definiciones_router
 from .profesor_materias import router as profesor_materias_router
 from .usuarios import router as usuarios_router
 from .auth import router as auth_router
+from .auditoria import  router as auditoria_router
 
 __all__ = [
     'personas_router',
@@ -15,5 +16,6 @@ __all__ = [
     'definiciones_router',
     'profesor_materias_router',
     'usuarios_router',
-    'auth_router'
+    'auth_router',
+    'auditoria_router'
 ]
