@@ -3,15 +3,34 @@
 {% block title %}Gestión de Personas{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1 class="mb-4">Gestión de Personas</h1>
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="text-primary mb-0">Gestión de Personas</h1>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#personaModal">
+                Nueva Persona
+            </button>
+        </div>
+    </div>
 
-    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#personaModal">
-        Nueva Persona
-    </button>
+    <!-- Alertas -->
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        {% if 'telefono' in error %}
+            El número de teléfono debe contener solo 10 dígitos numéricos.
+        {% else %}
+            Ha ocurrido un error al procesar su solicitud. Por favor revise los datos ingresados.
+        {% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    {% endif %}
 
+    <!-- Tabla -->
     <div class="table-responsive">
-        <table class="table table-striped">
+        <table class="table table-striped table-hover">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -32,7 +51,9 @@
                     <td>{{ persona.id }}</td>
                     <td>{{ persona.nombres }}</td>
                     <td>{{ persona.apellidos }}</td>
-                    <td>{{ persona.rol.nombre }}</td>
+                    <td>
+                        <span class="badge bg-secondary">{{ persona.rol.nombre }}</span>
+                    </td>
                     <td>
                         {% if persona.rol_id == 2 %}
                             {{ persona.profesor[0].matricula if persona.profesor else '' }}
@@ -45,21 +66,22 @@
                             {{ persona.alumno[0].carrera.nombre }}
                         {% endif %}
                     </td>
-                    <td>{{ persona.estado.nombre }}</td>
+                    <td>
+                        <span class="badge {% if persona.estado.nombre == 'Activo' %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ persona.estado.nombre }}
+                        </span>
+                    </td>
                     <td>{{ persona.telefono }}</td>
                     <td>{{ persona.correo }}</td>
                     <td>
-                        <a href="/personas/{{ persona.id }}" class="btn btn-sm btn-warning">Editar</a>
-                        <button onclick="confirmarEliminar({{ persona.id }})" class="btn btn-sm btn-danger">Eliminar</button>
-                    </td>
-                    <td>
                         <div class="btn-group">
-                            {% if persona.rol_id == 2 %}  <!-- Si es profesor -->
-                            <a href="/profesores/{{ persona.profesor[0].id }}/materias" class="btn btn-sm btn-info">
-                                Gestionar Materias
+                            <a href="/personas/{{ persona.id }}" class="btn btn-warning btn-sm">Editar</a>
+                            <button onclick="confirmarEliminar({{ persona.id }})" class="btn btn-danger btn-sm">Eliminar</button>
+                            {% if persona.rol_id == 2 %}
+                            <a href="/profesores/{{ persona.profesor[0].id }}/materias" class="btn btn-info btn-sm">
+                                Materias
                             </a>
                             {% endif %}
-                            <!-- ... otros botones ... -->
                         </div>
                     </td>
                 </tr>
@@ -68,59 +90,122 @@
         </table>
     </div>
 
-    <!-- Modal para crear persona -->
+    <!-- Modal -->
     <div class="modal fade" id="personaModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Nueva Persona</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="/personas" method="post">
+                <form action="/personas" method="post" class="needs-validation" novalidate>
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="nombres" class="form-label">Nombres</label>
-                            <input type="text" class="form-control" id="nombres" name="nombres" required>
+                            <input type="text"
+                                   class="form-control"
+                                   id="nombres"
+                                   name="nombres"
+                                   required
+                                   maxlength="50">
+                            <div class="invalid-feedback">
+                                Por favor ingrese los nombres
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="apellidos" class="form-label">Apellidos</label>
-                            <input type="text" class="form-control" id="apellidos" name="apellidos" required>
+                            <input type="text"
+                                   class="form-control"
+                                   id="apellidos"
+                                   name="apellidos"
+                                   required
+                                   maxlength="50">
+                            <div class="invalid-feedback">
+                                Por favor ingrese los apellidos
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="rol_id" class="form-label">Rol</label>
-                            <select class="form-select" id="rol_id" name="rol_id" required onchange="toggleCarrera()">
+                            <select class="form-select"
+                                    id="rol_id"
+                                    name="rol_id"
+                                    required
+                                    onchange="toggleCarrera()">
+                                <option value="">Seleccione un rol</option>
                                 {% for rol in roles %}
                                 <option value="{{ rol.id }}">{{ rol.nombre }}</option>
                                 {% endfor %}
                             </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione un rol
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="matricula" class="form-label">Matrícula</label>
-                            <input type="text" class="form-control" id="matricula" name="matricula" required>
+                            <input type="text"
+                                   class="form-control"
+                                   id="matricula"
+                                   name="matricula"
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese la matrícula
+                            </div>
                         </div>
+
                         <div class="mb-3" id="carreraDiv" style="display: none;">
                             <label for="carreras_id" class="form-label">Carrera</label>
                             <select class="form-select" id="carreras_id" name="carreras_id">
+                                <option value="">Seleccione una carrera</option>
                                 {% for carrera in carreras %}
                                 <option value="{{ carrera.id }}">{{ carrera.nombre }}</option>
                                 {% endfor %}
                             </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una carrera
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="estado_id" class="form-label">Estado</label>
                             <select class="form-select" id="estado_id" name="estado_id" required>
+                                <option value="">Seleccione un estado</option>
                                 {% for estado in estados %}
                                 <option value="{{ estado.id }}">{{ estado.nombre }}</option>
                                 {% endfor %}
                             </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione un estado
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="telefono" class="form-label">Teléfono</label>
-                            <input type="text" class="form-control" id="telefono" name="telefono" required>
+                            <input type="tel"
+                                   class="form-control"
+                                   id="telefono"
+                                   name="telefono"
+                                   required
+                                   maxlength="10"
+                                   pattern="[0-9]{10}"
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <div class="invalid-feedback">
+                                Por favor ingrese un teléfono válido (10 dígitos)
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="correo" class="form-label">Correo</label>
-                            <input type="email" class="form-control" id="correo" name="correo" required>
+                            <input type="email"
+                                   class="form-control"
+                                   id="correo"
+                                   name="correo"
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese un correo válido
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -132,8 +217,8 @@
         </div>
     </div>
 
-    <form id="deleteForm" method="post" style="display: none;">
-    </form>
+    <!-- Formulario oculto para eliminar -->
+    <form id="deleteForm" method="post" style="display: none;"></form>
 </div>
 {% endblock %}
 
@@ -152,7 +237,7 @@ function toggleCarrera() {
     const carreraDiv = document.getElementById('carreraDiv');
     const carreraSelect = document.getElementById('carreras_id');
 
-    if (rolSelect.value === '3') {  // Si es alumno
+    if (rolSelect.value === '3') {
         carreraDiv.style.display = 'block';
         carreraSelect.required = true;
     } else {
@@ -161,7 +246,21 @@ function toggleCarrera() {
     }
 }
 
-// Ejecutar al cargar la página
+// Validación de formularios Bootstrap
+(function () {
+    'use strict'
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+
 document.addEventListener('DOMContentLoaded', toggleCarrera);
 </script>
 {% endblock %}

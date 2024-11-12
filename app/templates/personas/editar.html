@@ -3,76 +3,314 @@
 {% block title %}Editar Persona{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1 class="mb-4">Editar Persona</h1>
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/personas">Personas</a></li>
+                    <li class="breadcrumb-item active">Editar</li>
+                </ol>
+            </nav>
+            <h1>Editar Persona</h1>
+        </div>
+    </div>
 
-    <form action="/personas/{{ persona.id }}/editar" method="post">
-        <div class="mb-3">
-            <label for="nombres" class="form-label">Nombres</label>
-            <input type="text" class="form-control" id="nombres" name="nombres" value="{{ persona.nombres }}" required>
+    <!-- Alertas -->
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        {% if 'telefono' in error %}
+            El número de teléfono debe contener exactamente 10 dígitos numéricos.
+        {% elif 'nombres' in error %}
+            El nombre solo debe contener letras y espacios.
+        {% elif 'apellidos' in error %}
+            Los apellidos solo deben contener letras y espacios.
+        {% elif 'matricula' in error %}
+            La matrícula debe contener entre 5 y 15 caracteres alfanuméricos.
+        {% elif 'correo' in error %}
+            Por favor ingrese un correo electrónico válido.
+        {% else %}
+            Ha ocurrido un error al procesar su solicitud. Por favor revise los datos ingresados.
+        {% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- Formulario -->
+    <div class="card">
+        <div class="card-body">
+            <form action="/personas/{{ persona.id }}/editar" method="post" class="needs-validation" novalidate onsubmit="return validarFormulario()">
+                <div class="row g-3">
+                    <!-- Información Personal -->
+                    <div class="col-12">
+                        <h5 class="mb-3">Información Personal</h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="nombres" class="form-label">Nombres</label>
+                        <input type="text"
+                               class="form-control"
+                               id="nombres"
+                               name="nombres"
+                               value="{{ persona.nombres }}"
+                               required
+                               pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]{2,50}"
+                               maxlength="50"
+                               oninput="validarNombre(this)">
+                        <div class="invalid-feedback" id="nombresFeedback">
+                            Por favor ingrese nombres válidos (solo letras y espacios)
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="apellidos" class="form-label">Apellidos</label>
+                        <input type="text"
+                               class="form-control"
+                               id="apellidos"
+                               name="apellidos"
+                               value="{{ persona.apellidos }}"
+                               required
+                               pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]{2,50}"
+                               maxlength="50"
+                               oninput="validarApellidos(this)">
+                        <div class="invalid-feedback" id="apellidosFeedback">
+                            Por favor ingrese apellidos válidos (solo letras y espacios)
+                        </div>
+                    </div>
+
+                    <!-- Información Académica -->
+                    <div class="col-12">
+                        <h5 class="mb-3 mt-2">Información Académica</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="rol_id" class="form-label">Rol</label>
+                        <select class="form-select"
+                                id="rol_id"
+                                name="rol_id"
+                                required
+                                onchange="toggleCarrera()">
+                            {% for rol in roles %}
+                            <option value="{{ rol.id }}"
+                                    {% if rol.id == persona.rol_id %}selected{% endif %}>
+                                {{ rol.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor seleccione un rol
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="matricula" class="form-label">Matrícula</label>
+                        <input type="text"
+                               class="form-control"
+                               id="matricula"
+                               name="matricula"
+                               value="{{ matricula }}"
+                               required
+                               pattern="[A-Za-z0-9]{5,15}"
+                               maxlength="15"
+                               oninput="validarMatricula(this)">
+                        <div class="invalid-feedback" id="matriculaFeedback">
+                            La matrícula debe contener entre 5 y 15 caracteres alfanuméricos
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="estado_id" class="form-label">Estado</label>
+                        <select class="form-select"
+                                id="estado_id"
+                                name="estado_id"
+                                required>
+                            {% for estado in estados %}
+                            <option value="{{ estado.id }}"
+                                    {% if estado.id == persona.estado_id %}selected{% endif %}>
+                                {{ estado.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor seleccione un estado
+                        </div>
+                    </div>
+
+                    <div class="col-md-12"
+                         id="carreraDiv"
+                         {% if persona.rol_id != 3 %}style="display: none;"{% endif %}>
+                        <label for="carreras_id" class="form-label">Carrera</label>
+                        <select class="form-select"
+                                id="carreras_id"
+                                name="carreras_id"
+                                {% if persona.rol_id == 3 %}required{% endif %}>
+                            {% for carrera in carreras %}
+                            <option value="{{ carrera.id }}"
+                                    {% if carrera.id == carrera_id %}selected{% endif %}>
+                                {{ carrera.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor seleccione una carrera
+                        </div>
+                    </div>
+
+                    <!-- Información de Contacto -->
+                    <div class="col-12">
+                        <h5 class="mb-3 mt-2">Información de Contacto</h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="telefono" class="form-label">Teléfono</label>
+                        <input type="tel"
+                               class="form-control"
+                               id="telefono"
+                               name="telefono"
+                               value="{{ persona.telefono }}"
+                               required
+                               pattern="[0-9]{10}"
+                               maxlength="10"
+                               oninput="validarTelefono(this)">
+                        <div class="invalid-feedback" id="telefonoFeedback">
+                            El teléfono debe contener exactamente 10 dígitos numéricos
+                        </div>
+                        <small class="text-muted">Formato: 10 dígitos numéricos (ejemplo: 0981234567)</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="correo" class="form-label">Correo Electrónico</label>
+                        <input type="email"
+                               class="form-control"
+                               id="correo"
+                               name="correo"
+                               value="{{ persona.correo }}"
+                               required
+                               maxlength="100"
+                               pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                               oninput="validarCorreo(this)">
+                        <div class="invalid-feedback" id="correoFeedback">
+                            Por favor ingrese un correo electrónico válido
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="/personas" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
         </div>
-        <div class="mb-3">
-            <label for="apellidos" class="form-label">Apellidos</label>
-            <input type="text" class="form-control" id="apellidos" name="apellidos" value="{{ persona.apellidos }}" required>
-        </div>
-        <div class="mb-3">
-            <label for="rol_id" class="form-label">Rol</label>
-            <select class="form-select" id="rol_id" name="rol_id" required onchange="toggleCarrera()">
-                {% for rol in roles %}
-                <option value="{{ rol.id }}" {% if rol.id == persona.rol_id %}selected{% endif %}>
-                    {{ rol.nombre }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="matricula" class="form-label">Matrícula</label>
-            <input type="text" class="form-control" id="matricula" name="matricula" value="{{ matricula }}" required>
-        </div>
-        <div class="mb-3" id="carreraDiv" {% if persona.rol_id != 3 %}style="display: none;"{% endif %}>
-            <label for="carreras_id" class="form-label">Carrera</label>
-            <select class="form-select" id="carreras_id" name="carreras_id" {% if persona.rol_id == 3 %}required{% endif %}>
-                {% for carrera in carreras %}
-                <option value="{{ carrera.id }}" {% if carrera.id == carrera_id %}selected{% endif %}>
-                    {{ carrera.nombre }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="estado_id" class="form-label">Estado</label>
-            <select class="form-select" id="estado_id" name="estado_id" required>
-                {% for estado in estados %}
-                <option value="{{ estado.id }}" {% if estado.id == persona.estado_id %}selected{% endif %}>
-                    {{ estado.nombre }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="telefono" class="form-label">Teléfono</label>
-            <input type="text" class="form-control" id="telefono" name="telefono" value="{{ persona.telefono }}" required>
-        </div>
-        <div class="mb-3">
-            <label for="correo" class="form-label">Correo</label>
-            <input type="email" class="form-control" id="correo" name="correo" value="{{ persona.correo }}" required>
-        </div>
-        <div class="mb-3">
-            <a href="/personas" class="btn btn-secondary">Cancelar</a>
-            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-        </div>
-    </form>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Validaciones de campos
+function validarNombre(input) {
+    const valor = input.value.trim();
+    const pattern = /^[A-Za-záéíóúÁÉÍÓÚñÑ\s]{2,50}$/;
+
+    if (!pattern.test(valor)) {
+        input.setCustomValidity('Nombre inválido');
+        return false;
+    }
+    input.setCustomValidity('');
+    return true;
+}
+
+function validarApellidos(input) {
+    const valor = input.value.trim();
+    const pattern = /^[A-Za-záéíóúÁÉÍÓÚñÑ\s]{2,50}$/;
+
+    if (!pattern.test(valor)) {
+        input.setCustomValidity('Apellidos inválidos');
+        return false;
+    }
+    input.setCustomValidity('');
+    return true;
+}
+
+function validarMatricula(input) {
+    const valor = input.value.trim();
+    const pattern = /^[A-Za-z0-9]{5,15}$/;
+
+    if (!pattern.test(valor)) {
+        input.setCustomValidity('Matrícula inválida');
+        return false;
+    }
+    input.setCustomValidity('');
+    return true;
+}
+
+function validarTelefono(input) {
+    input.value = input.value.replace(/[^0-9]/g, '');
+    const valor = input.value;
+
+    if (valor.length !== 10 || !/^[0-9]+$/.test(valor)) {
+        input.setCustomValidity('Teléfono inválido');
+        return false;
+    }
+    input.setCustomValidity('');
+    return true;
+}
+
+function validarCorreo(input) {
+    const valor = input.value.trim();
+    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    if (!pattern.test(valor)) {
+        input.setCustomValidity('Correo inválido');
+        return false;
+    }
+    input.setCustomValidity('');
+    return true;
+}
+
+// Función para validar todo el formulario
+function validarFormulario() {
+    const campos = {
+        nombres: document.getElementById('nombres'),
+        apellidos: document.getElementById('apellidos'),
+        matricula: document.getElementById('matricula'),
+        telefono: document.getElementById('telefono'),
+        correo: document.getElementById('correo')
+    };
+
+    let isValid = true;
+
+    for (let [campo, input] of Object.entries(campos)) {
+        switch(campo) {
+            case 'nombres':
+                isValid = validarNombre(input) && isValid;
+                break;
+            case 'apellidos':
+                isValid = validarApellidos(input) && isValid;
+                break;
+            case 'matricula':
+                isValid = validarMatricula(input) && isValid;
+                break;
+            case 'telefono':
+                isValid = validarTelefono(input) && isValid;
+                break;
+            case 'correo':
+                isValid = validarCorreo(input) && isValid;
+                break;
+        }
+    }
+
+    return isValid;
+}
+
 function toggleCarrera() {
     const rolSelect = document.getElementById('rol_id');
     const carreraDiv = document.getElementById('carreraDiv');
     const carreraSelect = document.getElementById('carreras_id');
 
-    if (rolSelect.value === '3') {  // Si es alumno
+    if (rolSelect.value === '3') {
         carreraDiv.style.display = 'block';
         carreraSelect.required = true;
     } else {
@@ -81,7 +319,45 @@ function toggleCarrera() {
     }
 }
 
-// Ejecutar al cargar la página
-document.addEventListener('DOMContentLoaded', toggleCarrera);
+// Validación de Bootstrap
+(function () {
+    'use strict'
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity() || !validarFormulario()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+
+// Prevenir caracteres no numéricos en el teléfono
+document.getElementById('telefono').addEventListener('keypress', function(e) {
+    if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+    }
+});
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCarrera();
+    // Validar campos iniciales
+    const campos = ['nombres', 'apellidos', 'matricula', 'telefono', 'correo'];
+    campos.forEach(campo => {
+        const input = document.getElementById(campo);
+        if (input.value) {
+            switch(campo) {
+                case 'nombres': validarNombre(input); break;
+                case 'apellidos': validarApellidos(input); break;
+                case 'matricula': validarMatricula(input); break;
+                case 'telefono': validarTelefono(input); break;
+                case 'correo': validarCorreo(input); break;
+            }
+        }
+    });
+});
 </script>
 {% endblock %}
